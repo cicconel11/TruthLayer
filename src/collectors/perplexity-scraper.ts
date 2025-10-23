@@ -277,16 +277,19 @@ export class PerplexityScraper extends BaseScraper {
      */
     protected normalizeResult(rawResult: RawSearchResult, query: string, rank: number): SearchResult {
         const timestamp = new Date();
-        const content = `${rawResult.title} ${rawResult.snippet} ${rawResult.url}`;
+        const title = rawResult.title?.trim() || '';
+        const snippet = rawResult.snippet?.trim() || '';
+        const url = rawResult.url || '';
+        const content = `${title} ${snippet} ${url}`;
 
         return {
             id: uuidv4(),
             query,
             engine: 'perplexity',
             rank,
-            title: rawResult.title.trim(),
-            snippet: rawResult.snippet.trim(),
-            url: rawResult.url,
+            title,
+            snippet,
+            url,
             timestamp,
             contentHash: this.generateContentHash(content)
         };
