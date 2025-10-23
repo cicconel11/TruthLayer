@@ -1,3 +1,5 @@
+import { BypassConfig } from './bypass';
+
 /**
  * Application configuration interface
  */
@@ -7,6 +9,7 @@ export interface AppConfig {
     annotation: AnnotationConfig;
     dashboard: DashboardConfig;
     monitoring: MonitoringConfig;
+    bypass: BypassConfig;
 }
 
 /**
@@ -38,6 +41,8 @@ export interface ScrapingConfig {
         backoffMultiplier: number;
     };
     timeout: number;
+    requestsPerWindow?: number;
+    windowSizeMs?: number;
 }
 
 /**

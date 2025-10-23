@@ -33,6 +33,7 @@ export interface CollectionRequest {
     engines: Array<'google' | 'bing' | 'perplexity' | 'brave'>;
     maxResults?: number;
     useProxy?: boolean;
+    category?: string;
 }
 
 /**
@@ -45,5 +46,7 @@ export interface CollectionResult {
         successfulEngines: string[];
         failedEngines: string[];
         collectionTime: number;
+        duplicatesRemoved?: number;
+        queryId?: string;
     };
 }

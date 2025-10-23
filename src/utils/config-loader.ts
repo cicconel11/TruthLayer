@@ -1,6 +1,7 @@
 import { config } from 'dotenv';
 import { z } from 'zod';
 import { AppConfig, DatabaseConfig, ScrapingConfig, AnnotationConfig, DashboardConfig, MonitoringConfig } from '../types/config';
+import { BypassConfig } from '../types/bypass';
 
 // Load environment variables
 config();
@@ -17,12 +18,21 @@ const DatabaseConfigSchema = z.object({
     connectionTimeout: z.number().default(30000),
 });
 
+const ProxyConfigSchema = z.object({
+    host: z.string(),
+    port: z.number(),
+    username: z.string().optional(),
+    password: z.string().optional(),
+    protocol: z.enum(['http', 'https', 'socks4', 'socks5']).default('http'),
+});
+
 const ScrapingConfigSchema = z.object({
     userAgents: z.array(z.string()).default([
         'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     ]),
+    proxies: z.array(ProxyConfigSchema).optional(),
     delays: z.object({
         min: z.number().default(2000),
         max: z.number().default(8000),
@@ -32,6 +42,8 @@ const ScrapingConfigSchema = z.object({
         backoffMultiplier: z.number().default(2),
     }),
     timeout: z.number().default(30000),
+    requestsPerWindow: z.number().default(30),
+    windowSizeMs: z.number().default(60000),
 });
 
 const AnnotationConfigSchema = z.object({
@@ -74,6 +86,28 @@ const MonitoringConfigSchema = z.object({
     }),
 });
 
+const BypassConfigSchema = z.object({
+    captcha: z.object({
+        enabled: z.boolean().default(false),
+        provider: z.enum(['twocaptcha', 'anticaptcha', 'capsolver']).default('twocaptcha'),
+        apiKey: z.string().default(''),
+        timeout: z.number().default(120000),
+        pollingInterval: z.number().default(3000),
+    }),
+    cloudflare: z.object({
+        enabled: z.boolean().default(false),
+        proxyService: z.string().optional(),
+        apiKey: z.string().optional(),
+        timeout: z.number().default(30000),
+    }),
+    retries: z.object({
+        maxAttempts: z.number().default(3),
+        baseDelay: z.number().default(1000),
+        maxDelay: z.number().default(30000),
+        backoffMultiplier: z.number().default(2),
+    }),
+});
+
 /**
  * Load and validate application configuration from environment variables
  */
@@ -90,7 +124,12 @@ export function loadConfig(): AppConfig {
             connectionTimeout: parseInt(process.env.DATABASE_CONNECTION_TIMEOUT || '30000'),
         });
 
+        // Parse proxy configuration from environment
+        const proxies = process.env.SCRAPING_PROXIES ?
+            JSON.parse(process.env.SCRAPING_PROXIES) : undefined;
+
         const scraping: ScrapingConfig = ScrapingConfigSchema.parse({
+            proxies,
             delays: {
                 min: parseInt(process.env.SCRAPING_MIN_DELAY || '2000'),
                 max: parseInt(process.env.SCRAPING_MAX_DELAY || '8000'),
@@ -100,6 +139,8 @@ export function loadConfig(): AppConfig {
                 backoffMultiplier: parseInt(process.env.SCRAPING_BACKOFF_MULTIPLIER || '2'),
             },
             timeout: parseInt(process.env.SCRAPING_TIMEOUT || '30000'),
+            requestsPerWindow: parseInt(process.env.SCRAPING_REQUESTS_PER_WINDOW || '30'),
+            windowSizeMs: parseInt(process.env.SCRAPING_WINDOW_SIZE_MS || '60000'),
         });
 
         const annotation: AnnotationConfig = AnnotationConfigSchema.parse({
@@ -142,12 +183,35 @@ export function loadConfig(): AppConfig {
             },
         });
 
+        const bypass: BypassConfig = BypassConfigSchema.parse({
+            captcha: {
+                enabled: process.env.BYPASS_CAPTCHA_ENABLED === 'true',
+                provider: process.env.BYPASS_CAPTCHA_PROVIDER as 'twocaptcha' | 'anticaptcha' | 'capsolver' || 'twocaptcha',
+                apiKey: process.env.BYPASS_CAPTCHA_API_KEY || '',
+                timeout: parseInt(process.env.BYPASS_CAPTCHA_TIMEOUT || '120000'),
+                pollingInterval: parseInt(process.env.BYPASS_CAPTCHA_POLLING_INTERVAL || '3000'),
+            },
+            cloudflare: {
+                enabled: process.env.BYPASS_CLOUDFLARE_ENABLED === 'true',
+                proxyService: process.env.BYPASS_CLOUDFLARE_PROXY_SERVICE,
+                apiKey: process.env.BYPASS_CLOUDFLARE_API_KEY,
+                timeout: parseInt(process.env.BYPASS_CLOUDFLARE_TIMEOUT || '30000'),
+            },
+            retries: {
+                maxAttempts: parseInt(process.env.BYPASS_RETRY_MAX_ATTEMPTS || '3'),
+                baseDelay: parseInt(process.env.BYPASS_RETRY_BASE_DELAY || '1000'),
+                maxDelay: parseInt(process.env.BYPASS_RETRY_MAX_DELAY || '30000'),
+                backoffMultiplier: parseInt(process.env.BYPASS_RETRY_BACKOFF_MULTIPLIER || '2'),
+            },
+        });
+
         return {
             database,
             scraping,
             annotation,
             dashboard,
             monitoring,
+            bypass,
         };
     } catch (error) {
         console.error('Configuration validation failed:', error);

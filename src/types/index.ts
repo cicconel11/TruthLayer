@@ -4,3 +4,4 @@ export * from './annotation';
 export * from './metrics';
 export * from './query';
 export * from './config';
+export * from './bypass';

@@ -10,8 +10,16 @@ export * from './types';
 export * from './utils';
 export * from './collectors';
 export * from './services';
-export * from './database';
 export * from './dashboard';
+
+// Export database module with specific naming to avoid conflicts
+export {
+    DatabaseConnection,
+    MigrationManager,
+    type DatabaseConfig as DbConfig
+} from './database';
+
+export { runMigrations } from './database/migrate';
 
 /**
  * Initialize the TruthLayer system
