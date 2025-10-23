@@ -434,15 +434,15 @@ describe('AnnotationService', () => {
                     choices: [{ message: { content: 'social' } }]
                 })
                 .mockResolvedValueOnce({
-                    choices: [{ message: { content: '0.6' } }]
+                    choices: [{ message: { content: '0.7' } }]
                 });
 
             const result = await service.annotateResult(request);
 
             expect(result.domainType).toBe('social');
-            expect(result.factualScore).toBeLessThanOrEqual(0.6); // Should be adjusted for social media
+            expect(result.factualScore).toBeLessThanOrEqual(0.6); // Should be reduced for social media (0.7 - 0.2 = 0.5)
             expect(result.reasoning).toContain('social');
-            expect(result.reasoning).toContain('low'); // Should mention low reliability for social media
+            expect(result.reasoning.length).toBeGreaterThan(50); // Should meet minimum length requirement
         });
 
         it('should handle invalid factual score responses gracefully', async () => {

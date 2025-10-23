@@ -67,6 +67,55 @@ export interface TrendAnalysis {
 }
 
 /**
+ * Rolling average calculation result
+ */
+export interface RollingAverage {
+    date: Date;
+    value: number;
+    rollingAverage7d: number;
+    rollingAverage30d: number;
+    sampleSize7d: number;
+    sampleSize30d: number;
+}
+
+/**
+ * Statistical significance test result
+ */
+export interface SignificanceTest {
+    pValue: number;
+    isSignificant: boolean;
+    confidenceLevel: number;
+    testStatistic: number;
+    testType: 'ttest' | 'mannwhitney' | 'welch';
+    effectSize: number;
+}
+
+/**
+ * Anomaly detection result
+ */
+export interface AnomalyDetection {
+    date: Date;
+    value: number;
+    expectedValue: number;
+    deviation: number;
+    isAnomaly: boolean;
+    severity: 'low' | 'medium' | 'high';
+    confidence: number;
+}
+
+/**
+ * Historical metrics data point
+ */
+export interface HistoricalMetric {
+    id: string;
+    queryId: string;
+    metricType: 'domain_diversity' | 'engine_overlap' | 'factual_alignment';
+    value: number;
+    calculatedAt: Date;
+    metadata?: Record<string, any>;
+}
+
+/**
  * Comparative analysis between engines
  */
 export interface EngineComparison {
