@@ -129,13 +129,13 @@
     - _Requirements: 3.1, 3.2, 3.3_
 
 - [ ] 6. Build query management and scheduling system
-  - [ ] 6.1 Implement benchmark query management
+  - [x] 6.1 Implement benchmark query management
     - Create query sets for health, politics, technology, and science topics
     - Implement query rotation and scheduling logic
     - Add support for seasonal and event-driven queries
     - _Requirements: 1.1, 5.1, 6.4_
 
-  - [ ] 6.2 Create automated scheduling service
+  - [x] 6.2 Create automated scheduling service
     - Implement CRON-based scheduling for daily and weekly collection cycles
     - Add job queue management for handling concurrent collection tasks
     - Create monitoring and alerting for failed collection jobs
