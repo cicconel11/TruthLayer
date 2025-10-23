@@ -73,19 +73,19 @@
     - _Requirements: 1.1, 1.2_
 
 - [ ] 4. Create LLM annotation pipeline
-  - [ ] 4.1 Implement annotation service interface
+  - [x] 4.1 Implement annotation service interface
     - Create AnnotationService class with OpenAI/Anthropic API integration
     - Design versioned prompt templates for domain classification and factual scoring
-    - Implement batch processing for cost-effective API usage
+    - Implement batch processing for cost-effective API usage3
     - _Requirements: 2.1, 2.2, 2.3, 2.5_
 
-  - [ ] 4.2 Build domain classification logic
+3  - [x] 4.2 Build domain classification logic
     - Create prompts for classifying results into news, government, academic, blog, commercial, social
     - Implement confidence scoring and reasoning extraction
     - Add validation for classification outputs
     - _Requirements: 2.1, 2.3, 2.4_
 
-  - [ ] 4.3 Implement factual consistency scoring
+  - [x] 4.3 Implement factual consistency scoring
     - Design prompts for evaluating factual reliability of search results
     - Create scoring rubric and confidence thresholds
     - Add quality assurance checks for annotation accuracy
