@@ -3,7 +3,7 @@
 import { DatabaseConnection } from './connection';
 import { MigrationManager } from './migrations';
 import { loadConfig } from '../utils/config-loader';
-import { logger } from '../utils/logger';
+import { logger, errorToLogContext } from '../utils/logger';
 
 async function runMigrations() {
     try {
@@ -38,7 +38,7 @@ async function runMigrations() {
 
         await dbConnection.close();
     } catch (error) {
-        logger.error('Migration failed:', error);
+        logger.error('Migration failed:', errorToLogContext(error));
         process.exit(1);
     }
 }

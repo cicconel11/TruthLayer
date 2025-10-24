@@ -10,7 +10,8 @@ export * from './types';
 export * from './utils';
 export * from './collectors';
 export * from './services';
-export * from './dashboard';
+// Dashboard exports (avoiding type conflicts)
+export { DashboardAPI, DashboardServer, dashboardServer } from './dashboard';
 
 // Export database module with specific naming to avoid conflicts
 export {

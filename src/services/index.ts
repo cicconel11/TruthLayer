@@ -12,3 +12,4 @@ export * from './job-queue-service';
 export * from './monitoring-service';
 export * from './bypass-service';
 export * from './captcha';
+export * from './collection-orchestration-service';

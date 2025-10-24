@@ -2,11 +2,11 @@ import { DatabaseConnection } from '../database/connection';
 import { MetricsService } from './metrics-service';
 import { logger } from '../utils/logger';
 import {
-    BiasMetrics,
+    // BiasMetrics, // TODO: Use for bias analysis
     HistoricalMetric,
     EngineComparison,
     TrendAnalysis,
-    RollingAverage
+    // RollingAverage // TODO: Use for rolling averages
 } from '../types/metrics';
 
 /**
@@ -287,7 +287,7 @@ export class MetricsAggregationService {
         category?: string
     ): Promise<EngineComparison> {
         const categoryFilter = category ? 'AND q.category = $4' : '';
-        const params = [startDate, endDate, engines];
+        const params: any[] = [startDate, endDate, engines];
         if (category) params.push(category);
 
         const query = `
@@ -781,7 +781,7 @@ export class MetricsAggregationService {
         endDate: Date
     ): { whereClause: string; params: any[] } {
         const conditions = ['bm.calculated_at >= $1', 'bm.calculated_at <= $2'];
-        const params = [startDate, endDate];
+        const params: any[] = [startDate, endDate];
         let paramIndex = 3;
 
         if (options.categories && options.categories.length > 0) {

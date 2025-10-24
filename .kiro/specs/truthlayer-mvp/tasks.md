@@ -141,82 +141,82 @@
     - Create monitoring and alerting for failed collection jobs
     - _Requirements: 5.1, 5.2, 5.4, 7.2_
 
-  - [ ] 6.3 Build collection orchestration
+  - [x] 6.3 Build collection orchestration
     - Create service to coordinate query execution across all engines
     - Implement collection cycle management and progress tracking
     - Add automatic retry and recovery mechanisms for failed collections
     - _Requirements: 5.1, 5.2, 5.3, 7.2_
 
-  - [ ] 6.4 Write integration tests for scheduling
+  - [x] 6.4 Write integration tests for scheduling
     - Test end-to-end collection and processing workflows
     - Validate error handling and recovery procedures
     - **Test thoroughly**: Run complete end-to-end workflows from query scheduling through data collection, annotation, and metrics computation, verify scheduling works correctly, test error recovery mechanisms, and validate job queue management before proceeding to next major task
     - _Requirements: 5.1, 5.2, 5.3_
 
 - [ ] 7. Create transparency dashboard and visualization
-  - [ ] 7.1 Set up Next.js dashboard application
+  - [x] 7.1 Set up Next.js dashboard application
     - Initialize Next.js project with TypeScript and Tailwind CSS
     - Create API routes for serving metrics data and handling exports
     - Set up database connection and data fetching utilities
     - _Requirements: 4.1, 4.4, 6.2_
 
-  - [ ] 7.2 Implement core dashboard views
+  - [x] 7.2 Implement core dashboard views
     - Create overview dashboard showing high-level metrics across engines
     - Build engine comparison view with side-by-side bias metric displays
     - Implement trend analysis view with time-series visualizations
     - _Requirements: 4.1, 4.2, 4.3_
 
-  - [ ] 7.3 Build interactive filtering and exploration
+  - [x] 7.3 Build interactive filtering and exploration
     - Add filtering capabilities by search engine, topic category, and date range
     - Create query explorer for drill-down analysis of specific searches
     - Implement real-time updates when new data is processed
     - _Requirements: 4.2, 4.5, 5.3_
 
-  - [ ] 7.4 Implement data export functionality
+  - [x] 7.4 Implement data export functionality
     - Create CSV and JSON export endpoints with filtering support
     - Add metadata inclusion for query sets, crawl dates, and methodology
     - Implement download progress tracking for large datasets
     - _Requirements: 4.4, 6.2, 6.4_
 
-  - [ ] 7.5 Add Chart.js visualizations
+  - [x] 7.5 Add Chart.js visualizations
     - Create interactive charts for bias metrics over time
     - Implement comparative visualizations between search engines
     - Add responsive design for mobile and desktop viewing
     - _Requirements: 4.1, 4.3, 6.3_
 
-  - [ ] 7.6 Write frontend component tests
+  - [x] 7.6 Write frontend component tests
     - Test dashboard component rendering and data display
     - Validate filtering and export functionality
     - **Test thoroughly**: Test all dashboard views with real data, verify interactive filtering works correctly, validate chart rendering and responsiveness, test data export functionality, and confirm API integration before proceeding to next major task
     - _Requirements: 4.1, 4.2, 4.4_
 
 - [ ] 8. Implement monitoring and data validation
-  - [ ] 8.1 Create system monitoring dashboard
+  - [x] 8.1 Create system monitoring dashboard
     - Build internal dashboard for tracking collection success rates
     - Implement performance monitoring for scraping and annotation processes
     - Add alerting for system failures and data quality issues
     - _Requirements: 7.2, 7.3, 5.4_
 
-  - [ ] 8.2 Implement data integrity validation
+  - [x] 8.2 Implement data integrity validation
     - Create content hash verification for duplicate detection
     - Add completeness checks for collection cycles and annotation coverage
     - Implement schema validation for all stored data
     - _Requirements: 7.1, 7.5, 5.5_
 
-  - [ ] 8.3 Build logging and audit capabilities
+  - [x] 8.3 Build logging and audit capabilities
     - Implement comprehensive logging for all system operations
     - Create audit trails for data processing and annotation decisions
     - Add debugging utilities for troubleshooting collection failures
     - _Requirements: 7.5, 2.3, 5.4_
 
-  - [ ] 8.4 Write monitoring system tests
+  - [x] 8.4 Write monitoring system tests
     - Test alerting mechanisms and failure detection
     - Validate data integrity checks and audit logging
     - **Test thoroughly**: Test all monitoring dashboards, verify alerting triggers correctly, validate data integrity checks catch issues, test audit logging completeness, and confirm system health monitoring before proceeding to next major task
     - _Requirements: 7.2, 7.3, 7.5_
 
 - [ ] 9. Generate transparency report and documentation
-  - [ ] 9.1 Create report generation system
+  - [x] 9.1 Create report generation system
     - Build automated report generation using collected metrics and trends
     - Create visualizations highlighting key findings and bias patterns
     - Implement report templating for consistent formatting and branding

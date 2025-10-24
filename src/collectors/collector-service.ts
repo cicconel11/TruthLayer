@@ -2,7 +2,7 @@ import { SearchResult, CollectionRequest, CollectionResult } from '../types/sear
 import { CreateSearchResultRequest } from '../database/models';
 import { SearchResultRepository, QueryRepository } from '../database/repositories';
 import { DatabaseConnection } from '../database/connection';
-import { logger } from '../utils/logger';
+import { logger, errorToLogContext } from '../utils/logger';
 import { GoogleScraper } from './google-scraper';
 import { BingScraper } from './bing-scraper';
 import { PerplexityScraper } from './perplexity-scraper';
@@ -53,7 +53,7 @@ export class CollectorService {
         try {
             await fs.mkdir(this.htmlStoragePath, { recursive: true });
         } catch (error) {
-            logger.error('Failed to create HTML storage directory:', error);
+            logger.error('Failed to create HTML storage directory:', errorToLogContext(error));
         }
     }
 
@@ -79,7 +79,7 @@ export class CollectorService {
                 queryId = queryRecord.id;
                 logger.info(`Created query record with ID: ${queryId}`);
             } catch (error) {
-                logger.error('Failed to create query record:', error);
+                logger.error('Failed to create query record:', errorToLogContext(error));
             }
         }
 
@@ -115,7 +115,7 @@ export class CollectorService {
                 logger.info(`Successfully collected and processed ${processedResults.length} results from ${engineName}`);
 
             } catch (error) {
-                logger.error(`Failed to collect from ${engineName}:`, error);
+                logger.error(`Failed to collect from ${engineName}:`, errorToLogContext(error));
                 failedEngines.push(engineName);
             }
         }
@@ -200,7 +200,7 @@ export class CollectorService {
                         await this.searchResultRepo.create(dbRequest);
                         logger.debug(`Stored result in database: ${result.id}`);
                     } catch (dbError) {
-                        logger.error(`Failed to store result in database: ${result.id}`, dbError);
+                        logger.error(`Failed to store result in database: ${result.id}`, errorToLogContext(dbError));
                         // Continue processing even if database storage fails
                     }
                 }
@@ -208,7 +208,7 @@ export class CollectorService {
                 processedResults.push(enhancedResult);
 
             } catch (error) {
-                logger.error(`Error processing result from ${engine}:`, error);
+                logger.error(`Error processing result from ${engine}:`, errorToLogContext(error));
                 // Continue with other results
             }
         }
@@ -287,7 +287,7 @@ export class CollectorService {
 
             return relativePath;
         } catch (error) {
-            logger.error(`Failed to store raw HTML for result ${resultId}:`, error);
+            logger.error(`Failed to store raw HTML for result ${resultId}:`, errorToLogContext(error));
             throw error;
         }
     }
@@ -332,7 +332,7 @@ export class CollectorService {
             const html = await fs.readFile(fullPath, 'utf8');
             return html;
         } catch (error) {
-            logger.error(`Failed to retrieve stored HTML: ${htmlPath}`, error);
+            logger.error(`Failed to retrieve stored HTML: ${htmlPath}`, errorToLogContext(error));
             return null;
         }
     }
@@ -380,7 +380,7 @@ export class CollectorService {
                 duplicateRate
             };
         } catch (error) {
-            logger.error('Failed to get collection statistics:', error);
+            logger.error('Failed to get collection statistics:', errorToLogContext(error));
             return null;
         }
     }
@@ -401,7 +401,7 @@ export class CollectorService {
                 // Add delay between queries to avoid overwhelming servers
                 await this.sleep(2000 + Math.random() * 3000);
             } catch (error) {
-                logger.error(`Failed bulk collection for query: ${request.query}`, error);
+                logger.error(`Failed bulk collection for query: ${request.query}`, errorToLogContext(error));
                 // Continue with other queries
             }
         }

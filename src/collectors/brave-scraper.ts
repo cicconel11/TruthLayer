@@ -1,7 +1,7 @@
 import { Page } from 'puppeteer';
 import { BaseScraper } from './base-scraper';
 import { SearchResult, RawSearchResult } from '../types/search-result';
-import { logger } from '../utils/logger';
+import { logger, errorToLogContext } from '../utils/logger';
 import { v4 as uuidv4 } from 'uuid';
 
 /**
@@ -57,7 +57,7 @@ export class BraveScraper extends BaseScraper {
                 return results;
 
             } catch (error) {
-                logger.error(`Error scraping Brave for query "${query}":`, error);
+                logger.error(`Error scraping Brave for query "${query}":`, errorToLogContext(error));
                 throw error;
             } finally {
                 await page.close();

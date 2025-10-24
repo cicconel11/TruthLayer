@@ -1,0 +1,315 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { query } from '@/lib/database';
+import { ExportRequest } from '@/types/dashboard';
+
+// Handle GET requests for export with query parameters
+export async function GET(request: NextRequest) {
+    try {
+        const { searchParams } = new URL(request.url);
+
+        const exportRequest: ExportRequest = {
+            format: (searchParams.get('format') as 'csv' | 'json') || 'csv',
+            dateRange: {
+                start: new Date(searchParams.get('start') || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)),
+                end: new Date(searchParams.get('end') || new Date()),
+            },
+            engines: searchParams.get('engines')?.split(',') || ['google', 'bing', 'perplexity', 'brave'],
+            categories: searchParams.get('categories')?.split(',').filter(Boolean) || [],
+            includeAnnotations: searchParams.get('includeAnnotations') === 'true',
+            includeRawData: searchParams.get('includeRawData') === 'true',
+        };
+
+        return await handleExport(exportRequest);
+    } catch (error) {
+        console.error('Error in GET export:', error);
+        return NextResponse.json(
+            { success: false, error: 'Failed to process export request' },
+            { status: 500 }
+        );
+    }
+}
+
+export async function POST(request: NextRequest) {
+    try {
+        const exportRequest: ExportRequest = await request.json();
+        return await handleExport(exportRequest);
+    } catch (error) {
+        console.error('Error in POST export:', error);
+        return NextResponse.json(
+            { success: false, error: 'Failed to process export request' },
+            { status: 500 }
+        );
+    }
+}
+
+async function handleExport(exportRequest: ExportRequest) {
+    try {
+        const {
+            format,
+            dateRange,
+            engines = ['google', 'bing', 'perplexity', 'brave'],
+            categories = [],
+            includeAnnotations = false,
+            includeRawData = false,
+        } = exportRequest;
+
+        // Build the base query
+        let baseQuery = `
+      SELECT 
+        q.id as query_id,
+        q.text as query_text,
+        q.category as query_category,
+        q.created_at as query_created_at,
+        sr.id as result_id,
+        sr.engine,
+        sr.rank,
+        sr.title,
+        sr.snippet,
+        sr.url,
+        sr.collected_at,
+        sr.content_hash
+    `;
+
+        if (includeAnnotations) {
+            baseQuery += `,
+        a.domain_type,
+        a.factual_score,
+        a.confidence_score,
+        a.reasoning,
+        a.model_version,
+        a.annotated_at
+      `;
+        }
+
+        if (includeRawData) {
+            baseQuery += `,
+        sr.raw_html_path
+      `;
+        }
+
+        baseQuery += `
+      FROM queries q
+      JOIN search_results sr ON q.id = sr.query_id
+    `;
+
+        if (includeAnnotations) {
+            baseQuery += `
+        LEFT JOIN annotations a ON sr.id = a.result_id
+      `;
+        }
+
+        // Build WHERE clause
+        const whereConditions = [
+            'sr.collected_at >= $1',
+            'sr.collected_at <= $2',
+            'sr.engine = ANY($3)',
+        ];
+
+        const params: any[] = [dateRange.start, dateRange.end, engines];
+        let paramIndex = 4;
+
+        if (categories.length > 0) {
+            whereConditions.push(`q.category = ANY($${paramIndex})`);
+            params.push(categories);
+            paramIndex++;
+        }
+
+        baseQuery += ` WHERE ${whereConditions.join(' AND ')}`;
+        baseQuery += ` ORDER BY q.created_at DESC, sr.engine, sr.rank`;
+
+        // Get additional metadata for enhanced export
+        const metadataQueries = await Promise.all([
+            // Get query set statistics
+            query(`
+                SELECT 
+                    category,
+                    COUNT(*) as query_count,
+                    MIN(created_at) as first_query,
+                    MAX(created_at) as last_query
+                FROM queries q
+                WHERE q.created_at >= $1 AND q.created_at <= $2
+                ${categories.length > 0 ? 'AND q.category = ANY($3)' : ''}
+                GROUP BY category
+                ORDER BY category
+            `, categories.length > 0 ? [dateRange.start, dateRange.end, categories] : [dateRange.start, dateRange.end]),
+
+            // Get collection statistics
+            query(`
+                SELECT 
+                    engine,
+                    COUNT(*) as result_count,
+                    COUNT(DISTINCT sr.query_id) as unique_queries,
+                    MIN(collected_at) as first_collection,
+                    MAX(collected_at) as last_collection
+                FROM search_results sr
+                JOIN queries q ON sr.query_id = q.id
+                WHERE sr.collected_at >= $1 AND sr.collected_at <= $2
+                AND sr.engine = ANY($3)
+                ${categories.length > 0 ? 'AND q.category = ANY($4)' : ''}
+                GROUP BY engine
+                ORDER BY engine
+            `, categories.length > 0 ? [dateRange.start, dateRange.end, engines, categories] : [dateRange.start, dateRange.end, engines]),
+
+            // Get annotation statistics if included
+            includeAnnotations ? query(`
+                SELECT 
+                    model_version,
+                    COUNT(*) as annotation_count,
+                    AVG(factual_score) as avg_factual_score,
+                    AVG(confidence_score) as avg_confidence_score,
+                    MIN(annotated_at) as first_annotation,
+                    MAX(annotated_at) as last_annotation
+                FROM annotations a
+                JOIN search_results sr ON a.result_id = sr.id
+                JOIN queries q ON sr.query_id = q.id
+                WHERE a.annotated_at >= $1 AND a.annotated_at <= $2
+                AND sr.engine = ANY($3)
+                ${categories.length > 0 ? 'AND q.category = ANY($4)' : ''}
+                GROUP BY model_version
+                ORDER BY model_version
+            `, categories.length > 0 ? [dateRange.start, dateRange.end, engines, categories] : [dateRange.start, dateRange.end, engines]) : Promise.resolve([])
+        ]);
+
+        const [querySetStats, collectionStats, annotationStats] = metadataQueries;
+
+        // Execute main query
+        const results = await query(baseQuery, params);
+
+        // Enhanced metadata
+        const enhancedMetadata = {
+            export: {
+                exportedAt: new Date().toISOString(),
+                exportVersion: '1.0',
+                format,
+                totalRecords: results.length,
+            },
+            methodology: {
+                description: 'TruthLayer collects search results from multiple engines to analyze algorithmic bias and information visibility patterns.',
+                dataCollection: {
+                    engines: engines,
+                    resultsPerQuery: 20,
+                    collectionFrequency: 'Daily for core queries, weekly for extended set',
+                    antiDetection: 'Proxy rotation, random delays, realistic browser fingerprinting',
+                },
+                annotation: includeAnnotations ? {
+                    method: 'LLM-powered classification and factual scoring',
+                    domainTypes: ['news', 'government', 'academic', 'blog', 'commercial', 'social'],
+                    factualScoring: 'Scale 0.0-1.0 based on factual reliability assessment',
+                    confidenceScoring: 'Scale 0.0-1.0 indicating annotation certainty',
+                } : undefined,
+                biasMetrics: {
+                    domainDiversity: 'Unique domains / total results (0.0-1.0, higher = more diverse)',
+                    engineOverlap: 'Shared URLs / total unique URLs (0.0-1.0, higher = more overlap)',
+                    factualAlignment: 'Weighted average of factual scores (0.0-1.0, higher = more factual)',
+                },
+            },
+            querySet: {
+                dateRange: {
+                    start: dateRange.start.toISOString(),
+                    end: dateRange.end.toISOString(),
+                },
+                categories: categories.length > 0 ? categories : 'all',
+                statistics: querySetStats,
+            },
+            collection: {
+                engines,
+                statistics: collectionStats,
+                crawlDates: {
+                    firstCollection: collectionStats.length > 0 ? Math.min(...collectionStats.map(s => new Date(s.first_collection).getTime())) : null,
+                    lastCollection: collectionStats.length > 0 ? Math.max(...collectionStats.map(s => new Date(s.last_collection).getTime())) : null,
+                },
+            },
+            annotations: includeAnnotations ? {
+                included: true,
+                statistics: annotationStats,
+            } : {
+                included: false,
+            },
+            dataQuality: {
+                completenessCheck: 'All results include required fields: query, engine, rank, title, url, timestamp',
+                deduplication: 'Content hash verification prevents duplicate results',
+                validation: 'Schema validation ensures data integrity',
+            },
+            usage: {
+                license: 'Research and analysis purposes',
+                citation: 'Please cite TruthLayer when using this data in publications',
+                contact: 'For questions about methodology or data quality',
+            },
+        };
+
+        if (format === 'csv') {
+            // Convert to CSV with enhanced metadata as header comments
+            if (results.length === 0) {
+                return new NextResponse('No data found for the specified criteria', {
+                    status: 404,
+                    headers: {
+                        'Content-Type': 'text/plain',
+                    },
+                });
+            }
+
+            const headers = Object.keys(results[0]);
+
+            // Create CSV with metadata header
+            const metadataHeader = [
+                '# TruthLayer Data Export',
+                `# Exported: ${enhancedMetadata.export.exportedAt}`,
+                `# Version: ${enhancedMetadata.export.exportVersion}`,
+                `# Records: ${enhancedMetadata.export.totalRecords}`,
+                `# Date Range: ${enhancedMetadata.querySet.dateRange.start} to ${enhancedMetadata.querySet.dateRange.end}`,
+                `# Engines: ${engines.join(', ')}`,
+                `# Categories: ${categories.length > 0 ? categories.join(', ') : 'all'}`,
+                `# Includes Annotations: ${includeAnnotations}`,
+                `# Includes Raw Data: ${includeRawData}`,
+                '# Methodology: https://truthlayer.org/methodology',
+                '# Citation: Please cite TruthLayer when using this data',
+                '#',
+            ].join('\n');
+
+            const csvContent = [
+                metadataHeader,
+                headers.join(','),
+                ...results.map(row =>
+                    headers.map(header => {
+                        const value = row[header];
+                        // Escape CSV values that contain commas or quotes
+                        if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
+                            return `"${value.replace(/"/g, '""')}"`;
+                        }
+                        return value || '';
+                    }).join(',')
+                )
+            ].join('\n');
+
+            return new NextResponse(csvContent, {
+                status: 200,
+                headers: {
+                    'Content-Type': 'text/csv',
+                    'Content-Disposition': `attachment; filename="truthlayer-export-${new Date().toISOString().split('T')[0]}.csv"`,
+                },
+            });
+        } else {
+            // Return JSON with enhanced metadata
+            const jsonData = {
+                metadata: enhancedMetadata,
+                data: results,
+            };
+
+            return NextResponse.json(jsonData, {
+                headers: {
+                    'Content-Disposition': `attachment; filename="truthlayer-export-${new Date().toISOString().split('T')[0]}.json"`,
+                },
+            });
+        }
+
+    } catch (error) {
+        console.error('Error exporting data:', error);
+        return NextResponse.json(
+            {
+                success: false,
+                error: 'Failed to export data',
+            },
+            { status: 500 }
+        );
+    }
+}

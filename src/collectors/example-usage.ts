@@ -6,11 +6,13 @@
 import { CollectorService } from './collector-service';
 import { DatabaseConnection } from '../database/connection';
 import { CollectionRequest } from '../types/search-result';
-import { logger } from '../utils/logger';
+import { logger, errorToLogContext } from '../utils/logger';
+import { getConfig } from '../utils/config-loader';
 
 async function demonstrateCollectorService() {
     // Initialize database connection (optional)
-    const db = new DatabaseConnection();
+    const config = getConfig();
+    const db = new DatabaseConnection(config.database);
     await db.connect();
 
     // Create collector service with database integration and custom HTML storage path
@@ -82,11 +84,11 @@ async function demonstrateCollectorService() {
         logger.info('Results validation:', { isValid });
 
     } catch (error) {
-        logger.error('Error during collection demonstration:', error);
+        logger.error('Error during collection demonstration:', errorToLogContext(error));
     } finally {
         // Clean up resources
         await collector.cleanup();
-        await db.disconnect();
+        await db.close();
     }
 }
 

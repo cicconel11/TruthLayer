@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync } from 'fs';
 import { join } from 'path';
 import { DatabaseConnection } from './connection';
-import { logger } from '../utils/logger';
+import { logger, errorToLogContext } from '../utils/logger';
 
 export interface Migration {
     id: string;
@@ -73,7 +73,7 @@ export class MigrationManager {
                 };
             });
         } catch (error) {
-            logger.error('Failed to load migration files:', error);
+            logger.error('Failed to load migration files:', errorToLogContext(error));
             return [];
         }
     }

@@ -11,7 +11,7 @@ import { createAnnotationPipeline } from './annotation-pipeline-factory';
 import { AnnotationQueueService } from './annotation-queue-service';
 import { RepositoryFactory } from '../database/repositories';
 import { loadConfig } from '../utils/config-loader';
-import { logger } from '../utils/logger';
+import { logger, errorToLogContext } from '../utils/logger';
 
 async function exampleAnnotationPipelineUsage() {
     // Load configuration
@@ -21,7 +21,7 @@ async function exampleAnnotationPipelineUsage() {
     const db = new DatabaseConnection({
         host: config.database.host,
         port: config.database.port,
-        database: config.database.name,
+        database: config.database.database,
         username: config.database.username,
         password: config.database.password,
         ssl: config.database.ssl
@@ -32,9 +32,10 @@ async function exampleAnnotationPipelineUsage() {
     // Create annotation service
     const annotationService = createAnnotationService({
         provider: 'openai',
-        apiKey: config.openai.apiKey,
-        model: config.openai.model || 'gpt-4',
+        apiKey: config.annotation.apiKey,
+        model: config.annotation.model || 'gpt-4',
         temperature: 0.1,
+        maxTokens: config.annotation.maxTokens,
         batchSize: 5,
         rateLimits: {
             requestsPerMinute: 60,
@@ -121,7 +122,7 @@ async function exampleAnnotationPipelineUsage() {
         logger.info('Annotation processing completed successfully');
 
     } catch (error) {
-        logger.error('Error in annotation pipeline example:', error);
+        logger.error('Error in annotation pipeline example:', errorToLogContext(error));
     } finally {
         // Clean up
         queueService.stop();

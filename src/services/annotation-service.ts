@@ -918,7 +918,6 @@ export class OpenAIAnnotationService implements AnnotationServiceInterface {
         confidenceScore: number
     ): string {
         const urlLower = request.url.toLowerCase();
-        const titleLower = request.title.toLowerCase();
 
         let reasoning = `Classified as '${domainType}' domain`;
 

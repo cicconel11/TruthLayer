@@ -1,5 +1,5 @@
 import { Pool, PoolClient, PoolConfig } from 'pg';
-import { logger } from '../utils/logger';
+import { logger, errorToLogContext } from '../utils/logger';
 
 export interface DatabaseConfig {
     host: string;
@@ -44,7 +44,7 @@ export class DatabaseConnection {
             client.release();
             logger.info('Database connection established successfully');
         } catch (error) {
-            logger.error('Failed to connect to database:', error);
+            logger.error('Failed to connect to database:', errorToLogContext(error));
             throw error;
         }
     }
@@ -88,7 +88,7 @@ export class DatabaseConnection {
             const result = await this.query('SELECT 1 as health');
             return result.rows[0].health === 1;
         } catch (error) {
-            logger.error('Database health check failed:', error);
+            logger.error('Database health check failed:', errorToLogContext(error));
             return false;
         }
     }

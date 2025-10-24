@@ -2,7 +2,7 @@ import { EventEmitter } from 'events';
 import { logger } from '../utils/logger';
 import { AnnotationServiceInterface } from './annotation-service';
 import { SearchResultRepository, AnnotationRepository, QueryRepository } from '../database/repositories';
-import { SearchResult, Annotation, CreateAnnotationRequest } from '../database/models';
+import { SearchResult, CreateAnnotationRequest } from '../database/models';
 import { AnnotationRequest, AnnotationResponse } from '../types/annotation';
 import { createHash } from 'crypto';
 
@@ -100,15 +100,17 @@ export class AnnotationPipeline extends EventEmitter {
     private processingTimer?: NodeJS.Timeout;
     private isRunning = false;
     private processingTimes: number[] = [];
+    private config: AnnotationPipelineConfig;
 
     constructor(
         private annotationService: AnnotationServiceInterface,
-        private searchResultRepo: SearchResultRepository,
+        private searchResultRepo: SearchResultRepository, // TODO: Use for search result operations
         private annotationRepo: AnnotationRepository,
         private queryRepo: QueryRepository,
-        private config: AnnotationPipelineConfig = DEFAULT_CONFIG
+        config?: Partial<AnnotationPipelineConfig>
     ) {
         super();
+        this.config = { ...DEFAULT_CONFIG, ...config };
         this.setupEventHandlers();
     }
 
@@ -666,7 +668,7 @@ export class AnnotationPipeline extends EventEmitter {
         }
 
         if (this.queryCache.has(queryId)) {
-            return this.queryCache.get(queryId);
+            return this.queryCache.get(queryId)!;
         }
 
         try {

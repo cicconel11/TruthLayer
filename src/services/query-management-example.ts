@@ -1,6 +1,6 @@
 import { DatabaseConnection } from '../database/connection';
 import { QueryService, QueryManagementService } from './index';
-import { logger } from '../utils/logger';
+import { logger, errorToLogContext } from '../utils/logger';
 
 /**
  * Example usage of the query management system
@@ -9,7 +9,7 @@ export class QueryManagementExample {
     private queryService: QueryService;
     private queryManagementService: QueryManagementService;
 
-    constructor(private db: DatabaseConnection) {
+    constructor(private db: DatabaseConnection) { // TODO: Use db for query operations
         this.queryService = new QueryService(db);
         this.queryManagementService = new QueryManagementService(db);
     }
@@ -47,7 +47,7 @@ export class QueryManagementExample {
             logger.info('Seasonal queries for current season:', seasonalQueries);
 
         } catch (error) {
-            logger.error('Demo failed:', error);
+            logger.error('Demo failed:', errorToLogContext(error));
             throw error;
         }
     }
@@ -119,7 +119,7 @@ export class QueryManagementExample {
 
             // Get execution status
             const status = this.queryManagementService.getExecutionStatus(executionId);
-            logger.info('Final execution status:', status);
+            logger.info('Final execution status:', { status: status || 'unknown' });
 
             // Get execution history
             const history = this.queryManagementService.getExecutionHistory(querySetId);
@@ -130,7 +130,7 @@ export class QueryManagementExample {
             });
 
         } catch (error) {
-            logger.error('Execution tracking demo failed:', error);
+            logger.error('Execution tracking demo failed:', errorToLogContext(error));
         }
     }
 
@@ -158,7 +158,7 @@ export class QueryManagementExample {
             logger.info('Rotation statistics:', rotationStats);
 
         } catch (error) {
-            logger.error('Seasonal and event queries demo failed:', error);
+            logger.error('Seasonal and event queries demo failed:', errorToLogContext(error));
         }
     }
 
@@ -202,7 +202,7 @@ export class QueryManagementExample {
             }
 
         } catch (error) {
-            logger.error('Query set creation demo failed:', error);
+            logger.error('Query set creation demo failed:', errorToLogContext(error));
         }
     }
 
@@ -222,7 +222,7 @@ export class QueryManagementExample {
             logger.info('All demos completed successfully!');
 
         } catch (error) {
-            logger.error('Demo suite failed:', error);
+            logger.error('Demo suite failed:', errorToLogContext(error));
             throw error;
         }
     }

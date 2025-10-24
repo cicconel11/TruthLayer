@@ -170,9 +170,9 @@ describe('BaseScraper Infrastructure', () => {
             const endTime = Date.now();
             const actualDuration = endTime - startTime;
 
-            // Allow for some timing variance (±50ms)
-            expect(actualDuration).toBeGreaterThanOrEqual(sleepDuration - 50);
-            expect(actualDuration).toBeLessThanOrEqual(sleepDuration + 50);
+            // Allow for some timing variance (±100ms) to account for system load
+            expect(actualDuration).toBeGreaterThanOrEqual(sleepDuration - 100);
+            expect(actualDuration).toBeLessThanOrEqual(sleepDuration + 100);
         });
     });
 

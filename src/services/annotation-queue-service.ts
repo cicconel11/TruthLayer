@@ -311,7 +311,8 @@ export class AnnotationQueueService extends EventEmitter {
         }
 
         // Check pipeline queue status
-        const queueStatus = this.pipeline.getQueueStatus();
+        // TODO: Use queue status for queue management logic
+        // const queueStatus = this.pipeline.getQueueStatus();
 
         // This is a simplified implementation - in a real system you might want
         // to track individual item status more precisely
