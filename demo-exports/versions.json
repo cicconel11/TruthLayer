@@ -1,0 +1,362 @@
+[
+  {
+    "version": "2025.01.demo.json",
+    "createdAt": "2025-10-24T01:32:46.320Z",
+    "description": "TruthLayer dataset export v2025.01.demo.json - 3 results from google, bing",
+    "dataHash": "522978ac42b01df18b3fbfd28f631438e7b4b3c84985260627787942f45fc5f4",
+    "recordCount": 3,
+    "filePath": "/Users/louisciccone/Desktop/TruthLayer/demo-exports/truthlayer-dataset-v2025.01.demo.json.json",
+    "metadata": {
+      "title": "TruthLayer Search Transparency Dataset v2025.01.demo.json",
+      "description": "Comprehensive dataset of search engine results with bias analysis and factual annotations for transparency research",
+      "version": "2025.01.demo.json",
+      "createdAt": "2025-10-24T01:32:46.318Z",
+      "methodology": {
+        "dataCollection": {
+          "engines": [
+            "google",
+            "bing"
+          ],
+          "resultsPerQuery": 20,
+          "collectionFrequency": "Daily for core queries, weekly for extended set",
+          "antiDetection": "Proxy rotation, random delays (2-8s), realistic browser fingerprinting",
+          "proxyRotation": true,
+          "requestThrottling": "2-8 second random delays between requests"
+        },
+        "annotation": {
+          "method": "LLM-powered classification using OpenAI GPT models with versioned prompts",
+          "domainTypes": [
+            "news",
+            "government",
+            "academic",
+            "blog",
+            "commercial",
+            "social"
+          ],
+          "factualScoring": "Scale 0.0-1.0 based on factual reliability assessment using chain-of-thought reasoning",
+          "confidenceScoring": "Scale 0.0-1.0 indicating annotation certainty and model confidence",
+          "modelVersions": [
+            "gpt-4-turbo"
+          ]
+        },
+        "biasMetrics": {
+          "domainDiversity": "Unique domains / total results (0.0-1.0, higher = more diverse)",
+          "engineOverlap": "Shared URLs / total unique URLs (0.0-1.0, higher = more overlap)",
+          "factualAlignment": "Weighted average of factual scores (0.0-1.0, higher = more factual)"
+        }
+      },
+      "dataQuality": {
+        "completenessCheck": "All results include required fields: query, engine, rank, title, url, timestamp",
+        "deduplication": "Content hash verification prevents duplicate results within collection cycles",
+        "validation": "Schema validation ensures data integrity and type safety",
+        "integrityVerification": "SHA-256 hashes for file integrity and provenance tracking"
+      },
+      "schema": {
+        "searchResults": {
+          "query_id": "UUID - Foreign key to queries table",
+          "query_text": "string - Original search query text",
+          "query_category": "string - Topic category (health, politics, technology, science)",
+          "query_created_at": "timestamp - When query was first added to system",
+          "result_id": "UUID - Unique identifier for search result",
+          "engine": "string - Search engine (google, bing, perplexity, brave)",
+          "rank": "integer - Position in search results (1-20)",
+          "title": "string - Result title as displayed by search engine",
+          "snippet": "string - Result snippet/description text",
+          "url": "string - Full URL of the result",
+          "collected_at": "timestamp - When result was scraped",
+          "content_hash": "string - SHA-256 hash of result content for deduplication"
+        },
+        "annotations": {
+          "annotation_id": "UUID - Unique identifier for annotation",
+          "result_id": "UUID - Foreign key to search_results table",
+          "domain_type": "string - Classified domain type",
+          "factual_score": "decimal - Factual reliability score (0.0-1.0)",
+          "confidence_score": "decimal - Annotation confidence (0.0-1.0)",
+          "reasoning": "string - LLM reasoning for classification",
+          "model_version": "string - LLM model version used for annotation",
+          "annotated_at": "timestamp - When annotation was generated"
+        },
+        "queries": {
+          "id": "UUID - Unique identifier for query",
+          "text": "string - Query text",
+          "category": "string - Topic category",
+          "created_at": "timestamp - When query was created",
+          "updated_at": "timestamp - Last modification time"
+        }
+      },
+      "statistics": {
+        "totalQueries": 2,
+        "totalResults": 3,
+        "totalAnnotations": 3,
+        "dateRange": {
+          "start": "2024-10-24T01:32:46.318Z",
+          "end": "2025-10-24T01:32:46.318Z"
+        },
+        "engineDistribution": {
+          "google": 2,
+          "bing": 1
+        },
+        "categoryDistribution": {
+          "science": 2
+        }
+      },
+      "usage": {
+        "license": "Creative Commons Attribution 4.0 International (CC BY 4.0)",
+        "citation": "TruthLayer Team. (2025). TruthLayer Search Transparency Dataset. Retrieved from https://truthlayer.org/datasets",
+        "contact": "datasets@truthlayer.org",
+        "restrictions": [
+          "Attribution required for any use",
+          "Commercial use permitted with attribution",
+          "Derivative works permitted with attribution",
+          "No warranty provided - use at your own risk"
+        ]
+      },
+      "provenance": {
+        "sourceSystem": "TruthLayer MVP v1.0",
+        "exportedBy": "DatasetExportService",
+        "exportedAt": "2025-10-24T01:32:46.318Z",
+        "dataIntegrityHash": ""
+      }
+    }
+  },
+  {
+    "version": "2025.01.demo.csv",
+    "createdAt": "2025-10-24T01:32:46.317Z",
+    "description": "TruthLayer dataset export v2025.01.demo.csv - 3 results from google, bing",
+    "dataHash": "7ffe214a8c407fc83cb180c31e7f6d88b9af5062c286489af879432ac9fcf5a5",
+    "recordCount": 3,
+    "filePath": "/Users/louisciccone/Desktop/TruthLayer/demo-exports/truthlayer-dataset-v2025.01.demo.csv.csv",
+    "metadata": {
+      "title": "TruthLayer Search Transparency Dataset v2025.01.demo.csv",
+      "description": "Comprehensive dataset of search engine results with bias analysis and factual annotations for transparency research",
+      "version": "2025.01.demo.csv",
+      "createdAt": "2025-10-24T01:32:46.315Z",
+      "methodology": {
+        "dataCollection": {
+          "engines": [
+            "google",
+            "bing"
+          ],
+          "resultsPerQuery": 20,
+          "collectionFrequency": "Daily for core queries, weekly for extended set",
+          "antiDetection": "Proxy rotation, random delays (2-8s), realistic browser fingerprinting",
+          "proxyRotation": true,
+          "requestThrottling": "2-8 second random delays between requests"
+        },
+        "annotation": {
+          "method": "LLM-powered classification using OpenAI GPT models with versioned prompts",
+          "domainTypes": [
+            "news",
+            "government",
+            "academic",
+            "blog",
+            "commercial",
+            "social"
+          ],
+          "factualScoring": "Scale 0.0-1.0 based on factual reliability assessment using chain-of-thought reasoning",
+          "confidenceScoring": "Scale 0.0-1.0 indicating annotation certainty and model confidence",
+          "modelVersions": [
+            "gpt-4-turbo"
+          ]
+        },
+        "biasMetrics": {
+          "domainDiversity": "Unique domains / total results (0.0-1.0, higher = more diverse)",
+          "engineOverlap": "Shared URLs / total unique URLs (0.0-1.0, higher = more overlap)",
+          "factualAlignment": "Weighted average of factual scores (0.0-1.0, higher = more factual)"
+        }
+      },
+      "dataQuality": {
+        "completenessCheck": "All results include required fields: query, engine, rank, title, url, timestamp",
+        "deduplication": "Content hash verification prevents duplicate results within collection cycles",
+        "validation": "Schema validation ensures data integrity and type safety",
+        "integrityVerification": "SHA-256 hashes for file integrity and provenance tracking"
+      },
+      "schema": {
+        "searchResults": {
+          "query_id": "UUID - Foreign key to queries table",
+          "query_text": "string - Original search query text",
+          "query_category": "string - Topic category (health, politics, technology, science)",
+          "query_created_at": "timestamp - When query was first added to system",
+          "result_id": "UUID - Unique identifier for search result",
+          "engine": "string - Search engine (google, bing, perplexity, brave)",
+          "rank": "integer - Position in search results (1-20)",
+          "title": "string - Result title as displayed by search engine",
+          "snippet": "string - Result snippet/description text",
+          "url": "string - Full URL of the result",
+          "collected_at": "timestamp - When result was scraped",
+          "content_hash": "string - SHA-256 hash of result content for deduplication"
+        },
+        "annotations": {
+          "annotation_id": "UUID - Unique identifier for annotation",
+          "result_id": "UUID - Foreign key to search_results table",
+          "domain_type": "string - Classified domain type",
+          "factual_score": "decimal - Factual reliability score (0.0-1.0)",
+          "confidence_score": "decimal - Annotation confidence (0.0-1.0)",
+          "reasoning": "string - LLM reasoning for classification",
+          "model_version": "string - LLM model version used for annotation",
+          "annotated_at": "timestamp - When annotation was generated"
+        },
+        "queries": {
+          "id": "UUID - Unique identifier for query",
+          "text": "string - Query text",
+          "category": "string - Topic category",
+          "created_at": "timestamp - When query was created",
+          "updated_at": "timestamp - Last modification time"
+        }
+      },
+      "statistics": {
+        "totalQueries": 2,
+        "totalResults": 3,
+        "totalAnnotations": 3,
+        "dateRange": {
+          "start": "2024-10-24T01:32:46.311Z",
+          "end": "2025-10-24T01:32:46.311Z"
+        },
+        "engineDistribution": {
+          "google": 2,
+          "bing": 1
+        },
+        "categoryDistribution": {
+          "science": 2
+        }
+      },
+      "usage": {
+        "license": "Creative Commons Attribution 4.0 International (CC BY 4.0)",
+        "citation": "TruthLayer Team. (2025). TruthLayer Search Transparency Dataset. Retrieved from https://truthlayer.org/datasets",
+        "contact": "datasets@truthlayer.org",
+        "restrictions": [
+          "Attribution required for any use",
+          "Commercial use permitted with attribution",
+          "Derivative works permitted with attribution",
+          "No warranty provided - use at your own risk"
+        ]
+      },
+      "provenance": {
+        "sourceSystem": "TruthLayer MVP v1.0",
+        "exportedBy": "DatasetExportService",
+        "exportedAt": "2025-10-24T01:32:46.315Z",
+        "dataIntegrityHash": ""
+      }
+    }
+  },
+  {
+    "version": "2025.01.demo.parquet",
+    "createdAt": "2025-10-24T01:32:46.202Z",
+    "description": "TruthLayer dataset export v2025.01.demo.parquet - 3 results from google, bing",
+    "dataHash": "1951de7c2653c00c10fed30fb8e2d584bab53fe75339d76e950d884d608ddbef",
+    "recordCount": 3,
+    "filePath": "/Users/louisciccone/Desktop/TruthLayer/demo-exports/truthlayer-dataset-v2025.01.demo.parquet.parquet",
+    "metadata": {
+      "title": "TruthLayer Search Transparency Dataset v2025.01.demo.parquet",
+      "description": "Comprehensive dataset of search engine results with bias analysis and factual annotations for transparency research",
+      "version": "2025.01.demo.parquet",
+      "createdAt": "2025-10-24T01:32:46.134Z",
+      "methodology": {
+        "dataCollection": {
+          "engines": [
+            "google",
+            "bing"
+          ],
+          "resultsPerQuery": 20,
+          "collectionFrequency": "Daily for core queries, weekly for extended set",
+          "antiDetection": "Proxy rotation, random delays (2-8s), realistic browser fingerprinting",
+          "proxyRotation": true,
+          "requestThrottling": "2-8 second random delays between requests"
+        },
+        "annotation": {
+          "method": "LLM-powered classification using OpenAI GPT models with versioned prompts",
+          "domainTypes": [
+            "news",
+            "government",
+            "academic",
+            "blog",
+            "commercial",
+            "social"
+          ],
+          "factualScoring": "Scale 0.0-1.0 based on factual reliability assessment using chain-of-thought reasoning",
+          "confidenceScoring": "Scale 0.0-1.0 indicating annotation certainty and model confidence",
+          "modelVersions": [
+            "gpt-4-turbo"
+          ]
+        },
+        "biasMetrics": {
+          "domainDiversity": "Unique domains / total results (0.0-1.0, higher = more diverse)",
+          "engineOverlap": "Shared URLs / total unique URLs (0.0-1.0, higher = more overlap)",
+          "factualAlignment": "Weighted average of factual scores (0.0-1.0, higher = more factual)"
+        }
+      },
+      "dataQuality": {
+        "completenessCheck": "All results include required fields: query, engine, rank, title, url, timestamp",
+        "deduplication": "Content hash verification prevents duplicate results within collection cycles",
+        "validation": "Schema validation ensures data integrity and type safety",
+        "integrityVerification": "SHA-256 hashes for file integrity and provenance tracking"
+      },
+      "schema": {
+        "searchResults": {
+          "query_id": "UUID - Foreign key to queries table",
+          "query_text": "string - Original search query text",
+          "query_category": "string - Topic category (health, politics, technology, science)",
+          "query_created_at": "timestamp - When query was first added to system",
+          "result_id": "UUID - Unique identifier for search result",
+          "engine": "string - Search engine (google, bing, perplexity, brave)",
+          "rank": "integer - Position in search results (1-20)",
+          "title": "string - Result title as displayed by search engine",
+          "snippet": "string - Result snippet/description text",
+          "url": "string - Full URL of the result",
+          "collected_at": "timestamp - When result was scraped",
+          "content_hash": "string - SHA-256 hash of result content for deduplication"
+        },
+        "annotations": {
+          "annotation_id": "UUID - Unique identifier for annotation",
+          "result_id": "UUID - Foreign key to search_results table",
+          "domain_type": "string - Classified domain type",
+          "factual_score": "decimal - Factual reliability score (0.0-1.0)",
+          "confidence_score": "decimal - Annotation confidence (0.0-1.0)",
+          "reasoning": "string - LLM reasoning for classification",
+          "model_version": "string - LLM model version used for annotation",
+          "annotated_at": "timestamp - When annotation was generated"
+        },
+        "queries": {
+          "id": "UUID - Unique identifier for query",
+          "text": "string - Query text",
+          "category": "string - Topic category",
+          "created_at": "timestamp - When query was created",
+          "updated_at": "timestamp - Last modification time"
+        }
+      },
+      "statistics": {
+        "totalQueries": 2,
+        "totalResults": 3,
+        "totalAnnotations": 3,
+        "dateRange": {
+          "start": "2024-10-24T01:32:46.102Z",
+          "end": "2025-10-24T01:32:46.102Z"
+        },
+        "engineDistribution": {
+          "google": 2,
+          "bing": 1
+        },
+        "categoryDistribution": {
+          "science": 2
+        }
+      },
+      "usage": {
+        "license": "Creative Commons Attribution 4.0 International (CC BY 4.0)",
+        "citation": "TruthLayer Team. (2025). TruthLayer Search Transparency Dataset. Retrieved from https://truthlayer.org/datasets",
+        "contact": "datasets@truthlayer.org",
+        "restrictions": [
+          "Attribution required for any use",
+          "Commercial use permitted with attribution",
+          "Derivative works permitted with attribution",
+          "No warranty provided - use at your own risk"
+        ]
+      },
+      "provenance": {
+        "sourceSystem": "TruthLayer MVP v1.0",
+        "exportedBy": "DatasetExportService",
+        "exportedAt": "2025-10-24T01:32:46.134Z",
+        "dataIntegrityHash": ""
+      }
+    }
+  }
+]

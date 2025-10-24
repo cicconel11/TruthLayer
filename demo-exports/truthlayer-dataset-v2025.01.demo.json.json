@@ -1,0 +1,208 @@
+{
+  "metadata": {
+    "title": "TruthLayer Search Transparency Dataset v2025.01.demo.json",
+    "description": "Comprehensive dataset of search engine results with bias analysis and factual annotations for transparency research",
+    "version": "2025.01.demo.json",
+    "createdAt": "2025-10-24T01:32:46.318Z",
+    "methodology": {
+      "dataCollection": {
+        "engines": [
+          "google",
+          "bing"
+        ],
+        "resultsPerQuery": 20,
+        "collectionFrequency": "Daily for core queries, weekly for extended set",
+        "antiDetection": "Proxy rotation, random delays (2-8s), realistic browser fingerprinting",
+        "proxyRotation": true,
+        "requestThrottling": "2-8 second random delays between requests"
+      },
+      "annotation": {
+        "method": "LLM-powered classification using OpenAI GPT models with versioned prompts",
+        "domainTypes": [
+          "news",
+          "government",
+          "academic",
+          "blog",
+          "commercial",
+          "social"
+        ],
+        "factualScoring": "Scale 0.0-1.0 based on factual reliability assessment using chain-of-thought reasoning",
+        "confidenceScoring": "Scale 0.0-1.0 indicating annotation certainty and model confidence",
+        "modelVersions": [
+          "gpt-4-turbo"
+        ]
+      },
+      "biasMetrics": {
+        "domainDiversity": "Unique domains / total results (0.0-1.0, higher = more diverse)",
+        "engineOverlap": "Shared URLs / total unique URLs (0.0-1.0, higher = more overlap)",
+        "factualAlignment": "Weighted average of factual scores (0.0-1.0, higher = more factual)"
+      }
+    },
+    "dataQuality": {
+      "completenessCheck": "All results include required fields: query, engine, rank, title, url, timestamp",
+      "deduplication": "Content hash verification prevents duplicate results within collection cycles",
+      "validation": "Schema validation ensures data integrity and type safety",
+      "integrityVerification": "SHA-256 hashes for file integrity and provenance tracking"
+    },
+    "schema": {
+      "searchResults": {
+        "query_id": "UUID - Foreign key to queries table",
+        "query_text": "string - Original search query text",
+        "query_category": "string - Topic category (health, politics, technology, science)",
+        "query_created_at": "timestamp - When query was first added to system",
+        "result_id": "UUID - Unique identifier for search result",
+        "engine": "string - Search engine (google, bing, perplexity, brave)",
+        "rank": "integer - Position in search results (1-20)",
+        "title": "string - Result title as displayed by search engine",
+        "snippet": "string - Result snippet/description text",
+        "url": "string - Full URL of the result",
+        "collected_at": "timestamp - When result was scraped",
+        "content_hash": "string - SHA-256 hash of result content for deduplication"
+      },
+      "annotations": {
+        "annotation_id": "UUID - Unique identifier for annotation",
+        "result_id": "UUID - Foreign key to search_results table",
+        "domain_type": "string - Classified domain type",
+        "factual_score": "decimal - Factual reliability score (0.0-1.0)",
+        "confidence_score": "decimal - Annotation confidence (0.0-1.0)",
+        "reasoning": "string - LLM reasoning for classification",
+        "model_version": "string - LLM model version used for annotation",
+        "annotated_at": "timestamp - When annotation was generated"
+      },
+      "queries": {
+        "id": "UUID - Unique identifier for query",
+        "text": "string - Query text",
+        "category": "string - Topic category",
+        "created_at": "timestamp - When query was created",
+        "updated_at": "timestamp - Last modification time"
+      }
+    },
+    "statistics": {
+      "totalQueries": 2,
+      "totalResults": 3,
+      "totalAnnotations": 3,
+      "dateRange": {
+        "start": "2024-10-24T01:32:46.318Z",
+        "end": "2025-10-24T01:32:46.318Z"
+      },
+      "engineDistribution": {
+        "google": 2,
+        "bing": 1
+      },
+      "categoryDistribution": {
+        "science": 2
+      }
+    },
+    "usage": {
+      "license": "Creative Commons Attribution 4.0 International (CC BY 4.0)",
+      "citation": "TruthLayer Team. (2025). TruthLayer Search Transparency Dataset. Retrieved from https://truthlayer.org/datasets",
+      "contact": "datasets@truthlayer.org",
+      "restrictions": [
+        "Attribution required for any use",
+        "Commercial use permitted with attribution",
+        "Derivative works permitted with attribution",
+        "No warranty provided - use at your own risk"
+      ]
+    },
+    "provenance": {
+      "sourceSystem": "TruthLayer MVP v1.0",
+      "exportedBy": "DatasetExportService",
+      "exportedAt": "2025-10-24T01:32:46.318Z",
+      "dataIntegrityHash": ""
+    }
+  },
+  "data": {
+    "searchResults": [
+      {
+        "query_id": "q1",
+        "query_text": "climate change effects",
+        "query_category": "science",
+        "query_created_at": "2025-01-01T00:00:00.000Z",
+        "result_id": "r1",
+        "engine": "google",
+        "rank": 1,
+        "title": "Climate Change: Effects and Impacts",
+        "snippet": "Climate change is causing significant environmental impacts worldwide...",
+        "url": "https://example.com/climate-effects",
+        "collected_at": "2025-01-01T10:00:00.000Z",
+        "content_hash": "abc123"
+      },
+      {
+        "query_id": "q1",
+        "query_text": "climate change effects",
+        "query_category": "science",
+        "query_created_at": "2025-01-01T00:00:00.000Z",
+        "result_id": "r2",
+        "engine": "bing",
+        "rank": 1,
+        "title": "Understanding Climate Change",
+        "snippet": "Learn about the causes and effects of climate change...",
+        "url": "https://example.org/climate-understanding",
+        "collected_at": "2025-01-01T10:05:00.000Z",
+        "content_hash": "def456"
+      },
+      {
+        "query_id": "q2",
+        "query_text": "renewable energy benefits",
+        "query_category": "science",
+        "query_created_at": "2025-01-01T00:00:00.000Z",
+        "result_id": "r3",
+        "engine": "google",
+        "rank": 1,
+        "title": "Benefits of Renewable Energy",
+        "snippet": "Renewable energy sources provide clean, sustainable power...",
+        "url": "https://example.com/renewable-benefits",
+        "collected_at": "2025-01-01T11:00:00.000Z",
+        "content_hash": "ghi789"
+      }
+    ],
+    "annotations": [
+      {
+        "annotation_id": "a1",
+        "result_id": "r1",
+        "domain_type": "academic",
+        "factual_score": 0.9,
+        "confidence_score": 0.85,
+        "reasoning": "This appears to be from a reputable scientific source with peer-reviewed information.",
+        "model_version": "gpt-4-turbo",
+        "annotated_at": "2025-01-01T12:00:00.000Z"
+      },
+      {
+        "annotation_id": "a2",
+        "result_id": "r2",
+        "domain_type": "government",
+        "factual_score": 0.85,
+        "confidence_score": 0.8,
+        "reasoning": "Government source with official climate data and policy information.",
+        "model_version": "gpt-4-turbo",
+        "annotated_at": "2025-01-01T12:05:00.000Z"
+      },
+      {
+        "annotation_id": "a3",
+        "result_id": "r3",
+        "domain_type": "news",
+        "factual_score": 0.75,
+        "confidence_score": 0.7,
+        "reasoning": "News article with good sourcing but some promotional content.",
+        "model_version": "gpt-4-turbo",
+        "annotated_at": "2025-01-01T12:10:00.000Z"
+      }
+    ],
+    "queries": [
+      {
+        "id": "q1",
+        "text": "climate change effects",
+        "category": "science",
+        "created_at": "2025-01-01T00:00:00.000Z",
+        "updated_at": "2025-01-01T00:00:00.000Z"
+      },
+      {
+        "id": "q2",
+        "text": "renewable energy benefits",
+        "category": "science",
+        "created_at": "2025-01-01T00:00:00.000Z",
+        "updated_at": "2025-01-01T00:00:00.000Z"
+      }
+    ]
+  }
+}

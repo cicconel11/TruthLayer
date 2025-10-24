@@ -222,19 +222,19 @@
     - Implement report templating for consistent formatting and branding
     - _Requirements: 6.2, 6.3_
 
-  - [ ] 9.2 Implement public dataset preparation
+  - [x] 9.2 Implement public dataset preparation
     - Create Parquet export functionality for analytical datasets
     - Add metadata documentation for methodology and data collection practices
     - Implement versioning system for dataset releases
     - _Requirements: 6.1, 6.4, 6.5_
 
-  - [ ] 9.3 Build documentation and methodology pages
+  - [x] 9.3 Build documentation and methodology pages
     - Create comprehensive documentation of data collection methods
     - Document bias metric calculations and statistical approaches
     - Add reproducibility guidelines and dataset usage instructions
     - _Requirements: 6.4, 6.5, 2.3_
 
-  - [ ] 9.4 Write documentation tests
+  - [x] 9.4 Write documentation tests
     - Validate report generation accuracy and completeness
     - Test dataset export functionality and metadata inclusion
     - **Test thoroughly**: Generate complete transparency reports with real data, verify all visualizations render correctly, test Parquet export functionality, validate metadata accuracy, and confirm documentation completeness before proceeding to next major task

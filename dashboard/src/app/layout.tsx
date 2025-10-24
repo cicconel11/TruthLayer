@@ -38,6 +38,15 @@ export default function RootLayout({
                   <a href="/explore" className="text-gray-700 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium">
                     Data Explorer
                   </a>
+                  <a href="/datasets" className="text-gray-700 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium">
+                    Datasets
+                  </a>
+                  <a href="/reports" className="text-gray-700 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium">
+                    Reports
+                  </a>
+                  <a href="/docs" className="text-gray-700 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium">
+                    Documentation
+                  </a>
                   <a href="/monitoring" className="text-gray-700 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium">
                     System Monitor
                   </a>
