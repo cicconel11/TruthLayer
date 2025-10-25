@@ -316,7 +316,7 @@ export function DashboardView() {
         y: {
           ticks: {
             color: 'rgba(226, 232, 240, 0.7)',
-            callback: (value: number) => formatValue(value, metric)
+            callback: (value: string | number) => formatValue(typeof value === 'number' ? value : parseFloat(value), metric)
           },
           grid: { color: 'rgba(148, 163, 184, 0.12)' }
         }
