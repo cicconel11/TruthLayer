@@ -19,7 +19,10 @@ import {
   buildAggregateMap,
   computeFactualAlignmentFromAggregates,
   formatValue,
-  toCsv
+  toCsv,
+  calculateTrend,
+  getLatestMetricValue,
+  getPreviousMetricValue
 } from '../lib/metrics-helpers';
 
 Chart.register(CategoryScale, LinearScale, PointElement, LineElement, Filler, Tooltip, Legend);
@@ -335,20 +338,46 @@ export function DashboardView() {
 
   const summaryCards = (['domain_diversity', 'engine_overlap', 'factual_alignment'] as MetricType[]).map((metric) => {
     const point = latestSnapshot?.[metric];
+    const dataset = buildDataset(metric);
+    
+    // Calculate trend if we have at least 2 data points
+    let trend = null;
+    if (dataset.length >= 2) {
+      const latest = dataset[dataset.length - 1].value;
+      const previous = dataset[dataset.length - 2].value;
+      trend = calculateTrend(latest, previous);
+    }
+    
     return (
       <div key={metric} className="card metric-card">
         <div>
           <h3>{METRIC_LABELS[metric]}</h3>
         </div>
-        <div className="metric-value">{formatValue(point?.value ?? null, metric)}</div>
-        <div className="metric-subtext">
-          {point?.delta !== null && point?.delta !== undefined ? (
-            <span className={point.delta >= 0 ? 'delta-positive' : 'delta-negative'}>
-              {point.delta >= 0 ? '+' : ''}
-              {formatValue(point.delta, metric)} vs prev
+        <div className="metric-value">
+          {formatValue(point?.value ?? null, metric)}
+          {trend && (
+            <span 
+              style={{ 
+                marginLeft: '0.75rem', 
+                fontSize: '1.5rem',
+                color: trend.color,
+                verticalAlign: 'middle'
+              }}
+              title={`${trend.direction} ${trend.displayChange} since last run`}
+            >
+              {trend.arrow}
             </span>
-          ) : (
+          )}
+        </div>
+        <div className="metric-subtext">
+          {trend ? (
+            <span style={{ color: trend.color, fontWeight: '600' }}>
+              {trend.displayChange} vs previous run
+            </span>
+          ) : dataset.length > 0 ? (
             'No prior comparison'
+          ) : (
+            'No data yet'
           )}
         </div>
       </div>
