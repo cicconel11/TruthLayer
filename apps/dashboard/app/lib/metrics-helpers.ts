@@ -89,3 +89,77 @@ export function toCsv(rows: Array<Record<string, unknown>>) {
   return lines.join("\n");
 }
 
+/**
+ * Calculate trend direction and percentage change between two values
+ * @param current - Current metric value
+ * @param previous - Previous metric value
+ * @returns Trend info with direction, percentage change, and display values
+ * 
+ * @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/sign
+ */
+export interface TrendInfo {
+  direction: 'up' | 'down' | 'stable';
+  percentChange: number;
+  arrow: '↑' | '↓' | '→';
+  color: string;
+  displayChange: string;
+}
+
+export function calculateTrend(current: number, previous: number): TrendInfo {
+  const diff = current - previous;
+  const percentChange = previous !== 0 ? (diff / previous) * 100 : 0;
+  
+  // Consider changes < 1% as stable
+  const threshold = 1;
+  
+  let direction: TrendInfo['direction'] = 'stable';
+  let arrow: TrendInfo['arrow'] = '→';
+  let color = '#94a3b8'; // gray for stable
+  
+  if (Math.abs(percentChange) >= threshold) {
+    if (diff > 0) {
+      direction = 'up';
+      arrow = '↑';
+      color = '#10b981'; // green
+    } else {
+      direction = 'down';
+      arrow = '↓';
+      color = '#ef4444'; // red
+    }
+  }
+  
+  const displayChange = percentChange >= 0 
+    ? `+${percentChange.toFixed(1)}%`
+    : `${percentChange.toFixed(1)}%`;
+  
+  return {
+    direction,
+    percentChange,
+    arrow,
+    color,
+    displayChange
+  };
+}
+
+/**
+ * Get the most recent metric value for a query
+ * @param metrics - Array of metric records sorted by date (newest first)
+ * @returns Latest value or null
+ */
+export function getLatestMetricValue(
+  metrics: Array<{ queryId: string; value: number; collectedAt: string }>
+): number | null {
+  return metrics.length > 0 ? metrics[0].value : null;
+}
+
+/**
+ * Get the previous metric value for comparison
+ * @param metrics - Array of metric records sorted by date (newest first)
+ * @returns Previous value or null if not enough data
+ */
+export function getPreviousMetricValue(
+  metrics: Array<{ queryId: string; value: number; collectedAt: string }>
+): number | null {
+  return metrics.length > 1 ? metrics[1].value : null;
+}
+
