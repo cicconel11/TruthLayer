@@ -1,0 +1,62 @@
+[
+  {
+    "runId": "d57a143d-25e2-4798-8d42-a65206efc178",
+    "queryId": "22222222-2222-2222-2222-222222222222",
+    "engine": null,
+    "metricType": "domain_diversity",
+    "value": 4,
+    "delta": null,
+    "comparedToRunId": null,
+    "collectedAt": "2025-10-25T00:56:49.473Z",
+    "windowStart": "2025-10-19T00:56:49.473Z",
+    "windowEnd": "2025-10-25T00:56:49.473Z",
+    "extra": {
+      "perEngine": {
+        "perplexity": 4
+      },
+      "totalResults": 4
+    }
+  },
+  {
+    "runId": "d57a143d-25e2-4798-8d42-a65206efc178",
+    "queryId": "22222222-2222-2222-2222-222222222222",
+    "engine": null,
+    "metricType": "engine_overlap",
+    "value": 0,
+    "delta": null,
+    "comparedToRunId": null,
+    "collectedAt": "2025-10-25T00:56:49.473Z",
+    "windowStart": "2025-10-19T00:56:49.473Z",
+    "windowEnd": "2025-10-25T00:56:49.473Z",
+    "extra": {
+      "sharedCount": 0,
+      "totalUrls": 4,
+      "pairwise": {},
+      "engines": [
+        "perplexity"
+      ]
+    }
+  },
+  {
+    "runId": "d57a143d-25e2-4798-8d42-a65206efc178",
+    "queryId": "22222222-2222-2222-2222-222222222222",
+    "engine": null,
+    "metricType": "factual_alignment",
+    "value": 1,
+    "delta": null,
+    "comparedToRunId": null,
+    "collectedAt": "2025-10-25T00:56:49.473Z",
+    "windowStart": "2025-10-19T00:56:49.473Z",
+    "windowEnd": "2025-10-25T00:56:49.473Z",
+    "extra": {
+      "counts": {
+        "aligned": 4,
+        "contradicted": 0,
+        "unclear": 0,
+        "not_applicable": 0
+      },
+      "annotatedCount": 4,
+      "totalResults": 4
+    }
+  }
+]
