@@ -1,0 +1,20 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "baseUrl": "src",
+    "paths": {
+      "@truthlayer/collector": ["../../collector/src/index"],
+      "@truthlayer/collector/*": ["../../collector/src/*"],
+      "@truthlayer/annotation": ["../../annotation/src/index"],
+      "@truthlayer/annotation/*": ["../../annotation/src/*"],
+      "@truthlayer/metrics": ["../../metrics/src/index"],
+      "@truthlayer/metrics/*": ["../../metrics/src/*"],
+      "@truthlayer/config": ["../../packages/config/src/index"],
+      "@truthlayer/config/*": ["../../packages/config/src/*"]
+    }
+  },
+  "include": ["src"],
+  "exclude": ["dist", "node_modules"]
+}

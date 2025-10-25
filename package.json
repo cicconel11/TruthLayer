@@ -1,0 +1,22 @@
+{
+  "name": "truthlayer",
+  "private": true,
+  "version": "0.1.0",
+  "description": "TruthLayer – infrastructure for search and AI transparency",
+  "packageManager": "pnpm@9.12.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "pnpm -r run build",
+    "lint": "pnpm -r run lint",
+    "test": "pnpm -r run test",
+    "dev:collector": "pnpm --filter @truthlayer/collector dev",
+    "dev:dashboard": "pnpm --filter @truthlayer/dashboard dev"
+  },
+  "engines": {
+    "node": ">=18.18.0"
+  }
+}
+

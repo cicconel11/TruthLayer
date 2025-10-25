@@ -1,0 +1,37 @@
+{
+  "name": "@truthlayer/annotation",
+  "version": "0.1.0",
+  "private": true,
+  "description": "LLM-based annotation service for TruthLayer",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsup src/index.ts --dts --format esm,cjs",
+    "dev": "ts-node-esm --loader ts-node/esm src/index.ts",
+    "lint": "eslint src --ext .ts",
+    "audit": "ts-node-esm --loader ts-node/esm src/scripts/manual-audit.ts",
+    "pretest": "pnpm --filter @truthlayer/schema build",
+    "start": "node dist/index.js",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@truthlayer/config": "link:../../packages/config",
+    "@truthlayer/schema": "link:../../packages/schema",
+    "@truthlayer/storage": "link:../storage",
+    "openai": "4.52.1",
+    "p-queue": "8.0.1",
+    "winston": "3.13.0",
+    "zod": "3.22.4"
+  },
+  "devDependencies": {
+    "@types/node": "20.11.30",
+    "eslint": "8.57.0",
+    "eslint-config-prettier": "9.1.0",
+    "eslint-plugin-import": "2.29.1",
+    "ts-node": "10.9.2",
+    "tsup": "8.1.0",
+    "typescript": "5.4.5",
+    "vitest": "1.6.0"
+  }
+}

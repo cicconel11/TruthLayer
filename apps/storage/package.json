@@ -1,0 +1,30 @@
+{
+  "name": "@truthlayer/storage",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsup src/index.ts --dts --format esm,cjs",
+    "pretest": "pnpm --filter @truthlayer/schema build && pnpm --filter @truthlayer/config build",
+    "lint": "eslint src --ext .ts",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@truthlayer/config": "link:../../packages/config",
+    "@truthlayer/schema": "link:../../packages/schema",
+    "duckdb": "1.1.0",
+    "pg": "8.11.3",
+    "zod": "3.22.4"
+  },
+  "devDependencies": {
+    "@types/node": "20.11.30",
+    "eslint": "8.57.0",
+    "eslint-config-prettier": "9.1.0",
+    "eslint-plugin-import": "2.29.1",
+    "tsup": "8.1.0",
+    "typescript": "5.4.5",
+    "vitest": "1.6.0"
+  }
+}

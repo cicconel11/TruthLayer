@@ -1,0 +1,16 @@
+node_modules/
+.env
+.DS_Store
+dist/
+build/
+*.log
+*.sqlite
+data/raw_html/
+reports/
+__pycache__/
+.mypy_cache/
+.pytest_cache/
+*.parquet
+*.db
+external/truthlayer-ref
+apps/dashboard/.next
