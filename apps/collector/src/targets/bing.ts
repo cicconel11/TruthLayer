@@ -60,21 +60,29 @@ export function createBingClient({ config, logger }: CreateBingClientOptions) {
           const titleEl = el.querySelector("h2 a, .b_title a, .b_topTitle a") as HTMLAnchorElement | null;
           const snippetEl = el.querySelector(".b_caption p, .b_snippet, .b_dList, .b_paractl") as HTMLElement | null;
           let url = titleEl?.href ?? "";
-          // unwrap redirect
-          try {
-            if (url.includes("bing.com/ck/a?")) {
-              const u = new URL(url);
-              const raw = u.searchParams.get("u");
-              if (raw) {
-                try {
-                  const decoded = atob(raw.replace(/_/g, "/").replace(/-/g, "+"));
-                  url = decodeURIComponent(Array.from(decoded).map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
-                } catch {
-                  url = decodeURIComponent(raw);
-                }
-              }
-            }
-          } catch {}
+    // unwrap redirect - improved base64 decoding
+    // @see https://developer.mozilla.org/en-US/docs/Web/API/atob
+    try {
+      if (url.includes("bing.com/ck/a?")) {
+        const u = new URL(url);
+        const raw = u.searchParams.get("u");
+        if (raw) {
+          // URL-safe base64 decode (replace URL-safe chars back to standard base64)
+          const base64 = raw.replace(/-/g, '+').replace(/_/g, '/');
+          const decoded = atob(base64);
+          // Decoded string should already be a valid URL
+          if (decoded.startsWith('http://') || decoded.startsWith('https://')) {
+            url = decoded;
+          } else {
+            // Invalid decoded URL - filter it out
+            url = "";
+          }
+        }
+      }
+    } catch (e) {
+      // Decoding failed - filter out this result
+      url = "";
+    }
           return {
             rank: i + 1,
             title: (titleEl?.textContent || "").trim(),

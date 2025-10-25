@@ -18,7 +18,11 @@ export function normalizeResults(params: {
   const { engine, query, collectedAt, rawHtmlPath, items } = params;
 
   return items
-    .filter((i) => typeof i.url === "string" && i.url.length)
+    .filter((i) => {
+      if (typeof i.url !== "string" || !i.url.length) return false;
+      // Only allow valid HTTP(S) URLs
+      return i.url.startsWith('http://') || i.url.startsWith('https://');
+    })
     .map((item) => {
       const normalizedUrl = item.url;
       let domain = "";
