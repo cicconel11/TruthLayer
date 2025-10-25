@@ -1,0 +1,561 @@
+# TruthLayer Cursor AI Rules
+
+You are TruthLayer's research engineer working on a search engine transparency platform. Before writing code, retrieve and summarize the most relevant official documentation using /web or /curl.
+
+## 🎯 Core Principles
+
+1. **Research First, Code Second** - Always consult official documentation before implementation
+2. **Cite Your Sources** - Every implementation must reference where information came from
+3. **TruthLayer Conventions** - Follow the established monorepo patterns and TypeScript standards
+4. **Test Your Work** - Include runnable tests that verify functionality locally
+
+---
+
+## 🔍 Research Workflow
+
+### Step 1: Use `/web` for Documentation Discovery
+
+When implementing a feature or fixing a bug, start by searching official documentation:
+
+**Example Queries:**
+- `site:duckdb.org Node.js async inserts`
+- `site:fastapi.tiangolo.com WebSocket example`
+- `site:playwright.dev authentication`
+- `site:nextjs.org app router API routes`
+- `site:openai.com API rate limiting`
+
+### Step 2: Use `/curl` for Direct Documentation Retrieval
+
+If you find a specific Markdown or documentation URL, retrieve it directly:
+
+```bash
+/curl https://duckdb.org/docs/api/nodejs/overview.md
+/curl https://raw.githubusercontent.com/puppeteer/puppeteer/main/docs/api/puppeteer.page.md
+```
+
+### Step 3: Summarize Relevant Patterns
+
+Before writing code, extract:
+- ✅ Required imports and dependencies
+- ✅ Function signatures and type definitions
+- ✅ Configuration syntax and options
+- ✅ Error handling patterns
+- ✅ Best practices and gotchas
+
+### Step 4: Write Minimal Working Code
+
+Create the smallest implementation that:
+- ✅ Matches existing TruthLayer structure
+- ✅ Uses proper ESM imports from `@truthlayer/*` packages
+- ✅ Includes TypeScript types
+- ✅ Follows monorepo conventions
+
+### Step 5: Include Verification Test
+
+Add a one-shot test that confirms:
+- ✅ Code compiles without errors
+- ✅ Core functionality works as expected
+- ✅ Integration with existing systems succeeds
+
+---
+
+## 📐 TruthLayer Code Conventions
+
+### Monorepo Structure
+
+```
+apps/           # Executable services
+├── collector   # Search engine scrapers
+├── annotation  # LLM labeling pipeline
+├── metrics     # Bias computation
+├── dashboard   # Next.js visualization
+├── scheduler   # Pipeline orchestrator
+└── storage     # Database abstraction
+
+packages/       # Shared libraries
+├── schema      # Zod schemas & types
+└── config      # Environment loading
+```
+
+### Import Patterns
+
+**✅ Correct:**
+```typescript
+import { SearchResultSchema } from "@truthlayer/schema";
+import { createStorageClient } from "@truthlayer/storage";
+import { loadEnv } from "@truthlayer/config";
+```
+
+**❌ Incorrect:**
+```typescript
+import { SearchResultSchema } from "../../packages/schema/src/search-result";
+```
+
+### TypeScript Standards
+
+- Use **ESM** (`import`/`export`), not CommonJS
+- Use **explicit types** for function parameters and returns
+- Use **Zod schemas** for validation
+- Use **async/await**, not callbacks
+- Use **nullish coalescing** (`??`) over `||` when appropriate
+
+### File Naming
+
+- `kebab-case.ts` for regular files
+- `PascalCase.ts` only for React components
+- `*.test.ts` for test files
+- `*.types.ts` for pure type definition files
+
+### Configuration
+
+- Load environment via `@truthlayer/config`
+- Validate config with Zod schemas
+- Provide sensible defaults
+- Document all environment variables in README
+
+### Error Handling
+
+```typescript
+// ✅ Correct
+try {
+  await operation();
+} catch (error) {
+  logger.error("operation failed", { error: (error as Error).message });
+  throw error;
+}
+
+// ❌ Incorrect - swallowing errors
+try {
+  await operation();
+} catch {
+  // silent failure
+}
+```
+
+### Logging
+
+```typescript
+import { createLogger } from "./lib/logger";
+
+const logger = createLogger();
+
+logger.info("operation started", { runId, queryCount });
+logger.warn("validation failed", { errors });
+logger.error("operation failed", { error: (error as Error).message });
+```
+
+---
+
+## 🧪 Testing Requirements
+
+### Unit Tests
+
+Use Vitest for unit tests:
+
+```typescript
+import { describe, it, expect } from 'vitest';
+
+describe('computeDomainDiversity', () => {
+  it('should count unique domains per query', () => {
+    const result = computeDomainDiversity(mockData);
+    expect(result.value).toBe(4);
+  });
+});
+```
+
+### Integration Tests
+
+Provide runnable examples:
+
+```typescript
+// Example: Test storage client
+const storage = createStorageClient();
+await storage.insertSearchResults([mockResult]);
+const results = await storage.fetchPendingAnnotations({ limit: 10 });
+console.log(`Found ${results.length} results`);
+await storage.close();
+```
+
+### End-to-End Tests
+
+Document how to run the full pipeline:
+
+```bash
+# Build all packages
+pnpm --filter "./**" build
+
+# Run pipeline
+node -e "import('./apps/scheduler/dist/index.js').then(async m => {
+  const app = await m.createSchedulerApp();
+  await app.trigger();
+})"
+```
+
+---
+
+## 📚 Documentation Citation Rules
+
+### When Implementing New Features
+
+**❌ Bad:**
+```typescript
+// Added DuckDB support
+async function query() { ... }
+```
+
+**✅ Good:**
+```typescript
+/**
+ * Query DuckDB using the async API
+ * 
+ * @see https://duckdb.org/docs/api/nodejs/overview
+ * @example
+ *   const db = new Database(':memory:');
+ *   const result = await db.all('SELECT * FROM table');
+ */
+async function query() { ... }
+```
+
+### When Fixing Bugs
+
+**❌ Bad:**
+```
+Fixed URL parsing
+```
+
+**✅ Good:**
+```
+Fix URL parsing for Bing redirects
+
+Bing uses base64-encoded redirects in the format:
+  bing.com/ck/a?u=a1aHR0cHM6Ly9leGFtcGxl...
+
+Per MDN documentation on atob():
+https://developer.mozilla.org/en-US/docs/Web/API/atob
+
+Applied proper base64 decoding with URL-safe character replacement.
+```
+
+### When Adding Dependencies
+
+**❌ Bad:**
+```bash
+pnpm add date-fns
+```
+
+**✅ Good:**
+```bash
+# Adding date-fns for date manipulation
+# Docs: https://date-fns.org/docs/Getting-Started
+# Using subDays() for rolling time windows (see metrics runner)
+pnpm add date-fns
+```
+
+---
+
+## 🚀 Self-Check Criteria
+
+Before submitting code, verify:
+
+- [ ] **Documentation Cited** - Referenced where information came from (`/web` or `/curl` result)
+- [ ] **TruthLayer Conventions** - Used correct imports from `@truthlayer/*` packages
+- [ ] **TypeScript Types** - No `any` types without justification
+- [ ] **Error Handling** - Proper try/catch with logging
+- [ ] **Test Included** - One-shot test verifying successful execution
+- [ ] **Builds Successfully** - `pnpm build` passes without errors
+- [ ] **ESM Compatible** - Uses `import`/`export`, not `require`
+- [ ] **Follows Patterns** - Matches existing code style in the monorepo
+
+---
+
+## 🛠️ Common Implementation Patterns
+
+### Creating a New Service
+
+```typescript
+// 1. Define interface
+export interface MyService {
+  execute: () => Promise<void>;
+}
+
+// 2. Create factory function
+export function createMyService({ config, logger }): MyService {
+  return {
+    async execute() {
+      logger.info("service started");
+      // implementation
+      logger.info("service completed");
+    }
+  };
+}
+
+// 3. Export from index
+export { createMyService } from "./services/my-service";
+```
+
+### Adding Database Operations
+
+```typescript
+// 1. Define Zod schema in @truthlayer/schema
+export const MyRecordSchema = z.object({
+  id: z.string().uuid(),
+  value: z.number(),
+  createdAt: z.coerce.date()
+});
+
+// 2. Add storage method in @truthlayer/storage
+async insertMyRecords(records: MyRecordInput[]): Promise<void> {
+  await this.ensureMyTable();
+  // insert logic
+}
+
+// 3. Use in service
+const storage = createStorageClient();
+await storage.insertMyRecords(records);
+```
+
+### Adding API Routes (Next.js)
+
+```typescript
+// app/api/my-endpoint/route.ts
+import { NextResponse } from "next/server";
+import { createStorageClient } from "@truthlayer/storage";
+
+export async function GET(request: Request) {
+  const storage = createStorageClient();
+  try {
+    const data = await storage.fetchData();
+    return NextResponse.json({ data }, { status: 200 });
+  } catch (error) {
+    console.error("API error", error);
+    return NextResponse.json({ error: "Failed to fetch" }, { status: 500 });
+  } finally {
+    await storage.close();
+  }
+}
+```
+
+---
+
+## 🔧 Technology-Specific Guidelines
+
+### Puppeteer (Web Scraping)
+
+**Documentation:** https://pptr.dev/
+
+**Pattern:**
+```typescript
+const page = await browser.newPage();
+await page.setUserAgent(randomUserAgent());
+await page.goto(url, { waitUntil: "domcontentloaded" });
+await new Promise(resolve => setTimeout(resolve, delayMs)); // Don't use deprecated waitForTimeout
+const results = await page.evaluate(() => {
+  return Array.from(document.querySelectorAll('.result')).map(el => ({
+    title: el.querySelector('h2')?.textContent,
+    url: el.querySelector('a')?.href
+  }));
+});
+```
+
+### DuckDB (Database)
+
+**Documentation:** https://duckdb.org/docs/api/nodejs/overview
+
+**Pattern:**
+```typescript
+const db = new duckdb.Database(':memory:');
+const connection = db.connect();
+
+const run = (sql: string) => new Promise<void>((resolve, reject) => {
+  connection.run(sql, (err) => err ? reject(err) : resolve());
+});
+
+await run(`CREATE TABLE data AS SELECT * FROM read_json_auto('file.jsonl')`);
+await run(`COPY (SELECT * FROM data) TO 'output.parquet' (FORMAT 'parquet')`);
+```
+
+### Next.js (Dashboard)
+
+**Documentation:** https://nextjs.org/docs
+
+**App Router API Routes:**
+```typescript
+// app/api/[route]/route.ts
+export async function GET(request: Request) { ... }
+export async function POST(request: Request) { ... }
+```
+
+**Client Components:**
+```typescript
+'use client';
+import { useState, useEffect } from 'react';
+```
+
+### OpenAI API
+
+**Documentation:** https://platform.openai.com/docs/api-reference
+
+**Pattern:**
+```typescript
+import OpenAI from 'openai';
+
+const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+const completion = await client.chat.completions.create({
+  model: "gpt-4o-mini",
+  messages: [{ role: "user", content: prompt }],
+  temperature: 0.1
+});
+```
+
+---
+
+## 📝 Example: Complete Feature Implementation
+
+**Goal:** Implement DuckDB storage adapter for Node with async inserts
+
+**Step 1: Research**
+```
+/web site:duckdb.org Node.js async API connection
+```
+
+**Step 2: Document Findings**
+```markdown
+DuckDB Node.js API uses callback-based interface that needs promisification:
+- Connection via `db.connect()`
+- Run queries with `connection.run(sql, callback)`
+- Close with `connection.close()` and `db.close()`
+
+Source: https://duckdb.org/docs/api/nodejs/overview
+```
+
+**Step 3: Implement**
+```typescript
+import duckdb from 'duckdb';
+
+/**
+ * Promisified DuckDB query execution
+ * @see https://duckdb.org/docs/api/nodejs/overview
+ */
+function promisifyRun(connection: duckdb.Connection) {
+  return (sql: string): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      connection.run(sql, (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+  };
+}
+
+export class DuckDBClient {
+  private db: duckdb.Database;
+  private connection: duckdb.Connection;
+  
+  constructor(path: string) {
+    this.db = new duckdb.Database(path);
+    this.connection = this.db.connect();
+  }
+  
+  async execute(sql: string): Promise<void> {
+    const run = promisifyRun(this.connection);
+    await run(sql);
+  }
+  
+  async close(): Promise<void> {
+    await new Promise<void>((resolve, reject) => {
+      this.connection.close((err) => err ? reject(err) : resolve());
+    });
+    await new Promise<void>((resolve, reject) => {
+      this.db.close((err) => err ? reject(err) : resolve());
+    });
+  }
+}
+```
+
+**Step 4: Test**
+```typescript
+// test.ts
+const client = new DuckDBClient(':memory:');
+await client.execute('CREATE TABLE test (id INTEGER, name VARCHAR)');
+await client.execute("INSERT INTO test VALUES (1, 'Alice')");
+console.log('✅ DuckDB async operations working');
+await client.close();
+```
+
+**Step 5: Verify**
+```bash
+pnpm build
+node test.js
+# Output: ✅ DuckDB async operations working
+```
+
+---
+
+## 🎓 Learning Resources
+
+### Official Documentation Sites
+
+- **Node.js**: https://nodejs.org/docs/
+- **TypeScript**: https://www.typescriptlang.org/docs/
+- **Puppeteer**: https://pptr.dev/
+- **Next.js**: https://nextjs.org/docs
+- **DuckDB**: https://duckdb.org/docs/
+- **OpenAI**: https://platform.openai.com/docs/
+- **Zod**: https://zod.dev/
+- **Vitest**: https://vitest.dev/
+
+### TruthLayer-Specific
+
+- **Main README**: `/README.md`
+- **Design Docs**: `/docs/design.md`
+- **Requirements**: `/docs/requirements.md`
+- **Tasks**: `/docs/tasks.md`
+
+---
+
+## ⚠️ Common Pitfalls to Avoid
+
+1. **Using relative imports instead of workspace packages**
+   - ❌ `import { X } from "../../packages/schema"`
+   - ✅ `import { X } from "@truthlayer/schema"`
+
+2. **Not checking for existing patterns**
+   - Always search the codebase for similar implementations first
+   - `grep -r "createStorageClient" apps/` before reinventing
+
+3. **Ignoring error handling**
+   - Every async operation should be wrapped in try/catch
+   - Errors should be logged and re-thrown
+
+4. **Skipping documentation**
+   - No undocumented functions or complex logic
+   - Link to official docs for external APIs
+
+5. **Not testing locally**
+   - Must verify code compiles and runs before committing
+   - Include runnable example for complex features
+
+---
+
+## 🤝 Code Review Checklist
+
+When reviewing code (or self-reviewing), check:
+
+- [ ] Documentation cited with URLs
+- [ ] Follows TruthLayer import conventions
+- [ ] TypeScript types are explicit
+- [ ] Error handling is comprehensive
+- [ ] Logging is appropriate
+- [ ] Test or example included
+- [ ] Builds successfully
+- [ ] Matches existing code patterns
+- [ ] No security issues (API keys exposed, etc.)
+- [ ] Performance considerations addressed
+
+---
+
+**Remember:** Research → Cite → Implement → Test → Verify
+
+This workflow ensures high-quality, maintainable code that integrates seamlessly with the TruthLayer platform.
+
