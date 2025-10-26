@@ -3,7 +3,7 @@ import { BenchmarkQuery, SearchResult } from "@truthlayer/schema";
 import { CollectorConfig } from "../lib/config";
 import { Logger } from "../lib/logger";
 import { ensureRequestPermitted } from "../lib/compliance";
-import { ensureBrowser, randomUserAgent, takeHtmlSnapshot } from "./utils";
+import { ensureBrowser, randomUserAgent, takeHtmlSnapshot, waitForResults, validateExtraction, detectBotBlock, captureDebugSnapshot } from "./utils";
 import { normalizeResults, RawSerpItem } from "./normalize";
 import pRetry from "p-retry";
 
@@ -33,6 +33,28 @@ export function createBraveClient({ config, logger }: CreateBraveClientOptions) 
 
       await new Promise(resolve => setTimeout(resolve, config.engines.brave.delayMs));
 
+      // Check for bot detection
+      const isBlocked = await detectBotBlock(page);
+      if (isBlocked) {
+        logger.warn("bot detection triggered", { 
+          engine: "brave",
+          query: query.query 
+        });
+        await captureDebugSnapshot(page, "brave", config.runId, query.id, "bot_detected");
+        return [];
+      }
+
+      // Wait for results to load
+      const foundSelector = await waitForResults(page, [
+        '.card[data-type]',
+        '.snippet.fdb',
+        'div[data-pos]'
+      ], 10000);
+
+      if (!foundSelector) {
+        logger.warn("brave no results found", { query: query.query });
+      }
+
       const collectedAt = new Date();
       const htmlSnapshot = await page.content();
       const { htmlPath } = await takeHtmlSnapshot({
@@ -43,38 +65,71 @@ export function createBraveClient({ config, logger }: CreateBraveClientOptions) 
       });
 
       const rawResults = await page.evaluate((max: number) => {
-        const els = Array.from(document.querySelectorAll(".fdb, .snippet.fdb"));
-      const items = els.slice(0, max).map((el, i) => {
-        const titleEl = el.querySelector("a.result-header, a[href*='http']") as HTMLAnchorElement | null;
-        const snippetEl = el.querySelector(".snippet-content, .snippet-description, .result-snippet") as HTMLElement | null;
-        let url = titleEl?.href ?? "";
+        // Multiple fallback selectors for Brave results
+        const selectorStrategies = [
+          '.card[data-type="web"]',
+          '.card[data-type="news"]', 
+          '.card.svelte-n0tn90',
+          '.snippet.fdb',  // Legacy fallback
+          'div[data-pos]'
+        ];
         
-        // Check for Brave redirect URLs and validate
-        try {
-          if (url.includes("search.brave.com/redirect") || url.includes("brave.com/link")) {
-            const u = new URL(url);
-            const target = u.searchParams.get("url") || u.searchParams.get("u");
-            if (target) {
-              url = decodeURIComponent(target);
-            }
-          }
-          // Validate it's a proper URL
-          if (url && !url.startsWith('http://') && !url.startsWith('https://')) {
-            url = "";
-          }
-        } catch {
-          url = "";
+        let els: Element[] = [];
+        for (const selector of selectorStrategies) {
+          els = Array.from(document.querySelectorAll(selector));
+          if (els.length > 0) break;
         }
         
-        return {
-          rank: i + 1,
-          title: (titleEl?.textContent || "").trim(),
-          snippet: (snippetEl?.textContent || "").trim(),
-          url
-        };
-      });
+        const items = els.slice(0, max).map((el, i) => {
+          // Multiple extraction strategies
+          const linkEl = el.querySelector('a[href]') as HTMLAnchorElement | null;
+          const titleEl = linkEl?.querySelector('h2, .title, .result-header') || 
+                          el.querySelector('h2, .title');
+          const snippetEl = el.querySelector('.snippet-description, .card-body, .snippet-content');
+          
+          let url = linkEl?.href ?? "";
+          
+          // Brave redirect unwrapping + validation
+          try {
+            if (url.includes("search.brave.com/redirect") || url.includes("brave.com/link")) {
+              const u = new URL(url);
+              const target = u.searchParams.get("url") || u.searchParams.get("u");
+              if (target) url = decodeURIComponent(target);
+            }
+            if (url && !url.startsWith('http://') && !url.startsWith('https://')) {
+              url = "";
+            }
+          } catch {
+            url = "";
+          }
+          
+          return {
+            rank: i + 1,
+            title: (titleEl?.textContent || "").trim(),
+            snippet: (snippetEl?.textContent || "").trim(),
+            url,
+            confidence: url && titleEl ? 1.0 : 0.5  // Quality indicator
+          };
+        });
+        
         return items;
       }, Math.min(config.maxResultsPerQuery, 20)) as RawSerpItem[];
+
+      // Validate extraction quality
+      const quality = validateExtraction(rawResults);
+      logger.info("extraction quality", {
+        engine: "brave",
+        query: query.query,
+        ...quality
+      });
+
+      if (quality.confidence < 0.3) {
+        logger.warn("low extraction confidence", {
+          engine: "brave",
+          confidence: quality.confidence,
+          warnings: quality.warnings
+        });
+      }
 
       return normalizeResults({
         engine: "brave",
@@ -84,10 +139,32 @@ export function createBraveClient({ config, logger }: CreateBraveClientOptions) 
         items: rawResults
       });
     } catch (error) {
-      logger.error("brave search failed", { query: query.query, error });
+      logger.error("brave search failed", { 
+        query: query.query, 
+        error: (error as Error).message 
+      });
+      
+      // Capture debug info
+      try {
+        const debugPath = await captureDebugSnapshot(
+          page,
+          "brave",
+          config.runId,
+          query.id,
+          "search_failed"
+        );
+        logger.info("debug snapshot saved", { path: debugPath });
+      } catch (debugError) {
+        logger.warn("failed to capture debug snapshot", { error: debugError });
+      }
+      
       throw error;
     } finally {
-      await page.close();
+      try {
+        await page.close();
+      } catch (closeError) {
+        // Page already closed, ignore
+      }
     }
   }
 

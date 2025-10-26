@@ -1,16 +1,46 @@
+# Dependencies
 node_modules/
-.env
-.DS_Store
+pnpm-lock.yaml
+package-lock.json
+
+# Build outputs
 dist/
+.next/
 build/
-*.log
-*.sqlite
+*.tsbuildinfo
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Test outputs
+coverage/
+.nyc_output/
+
+# Data and logs
+data/serp/*.json
 data/raw_html/
+data/cache/
+data/debug/
+data/metrics/
+data/parquet/
+data/*.duckdb
+data/*.wal
 reports/
-__pycache__/
-.mypy_cache/
-.pytest_cache/
-*.parquet
-*.db
-external/truthlayer-ref
-apps/dashboard/.next
+logs/
+
+# Temporary files
+.env.bak
+.env.quick
+test-quick.js
+config/quick-test.json
+TruthLayer/
