@@ -23,6 +23,8 @@ const EnvSchema = z.object({
   COLLECTOR_USER_AGENT: z.string().min(1).default("TruthLayerBot/0.1 (https://truthlayer.ai)"),
   COLLECTOR_RESPECT_ROBOTS: BooleanFromEnv.optional().default(true),
   COLLECTOR_ROBOTS_CACHE_TTL_MS: z.coerce.number().int().min(60000).max(86400000).default(3600000),
+  COLLECTOR_CACHE_TTL_DAYS: z.coerce.number().int().min(1).max(365).default(7),
+  FORCE_REFRESH: z.enum(["true", "false"]).default("false").transform(v => v === "true"),
   ANNOTATION_CACHE_DIR: z.string().min(1).default("data/cache/annotation"),
   ANNOTATION_MODEL: z.string().min(1).default("gpt-4o-mini"),
   ANNOTATION_PROMPT_VERSION: z.string().min(1).default("v1"),

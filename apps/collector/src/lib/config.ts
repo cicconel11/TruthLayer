@@ -21,7 +21,9 @@ const CollectorConfigSchema = z.object({
     perplexity: EngineConfigSchema,
     brave: EngineConfigSchema
   }),
-  maxResultsPerQuery: z.number().int().min(1).max(100).default(20)
+  maxResultsPerQuery: z.number().int().min(1).max(100).default(20),
+  cacheTtlMs: z.number().int().min(0).default(7 * 24 * 60 * 60 * 1000), // 7 days
+  forceRefresh: z.boolean().default(false)
 });
 
 export type CollectorConfig = z.infer<typeof CollectorConfigSchema>;
@@ -42,6 +44,8 @@ export function makeCollectorConfig(): CollectorConfig {
     maxResultsPerQuery: env.COLLECTOR_MAX_RESULTS,
     userAgent: env.COLLECTOR_USER_AGENT,
     respectRobots: env.COLLECTOR_RESPECT_ROBOTS,
-    robotsCacheTtlMs: env.COLLECTOR_ROBOTS_CACHE_TTL_MS
+    robotsCacheTtlMs: env.COLLECTOR_ROBOTS_CACHE_TTL_MS,
+    cacheTtlMs: env.COLLECTOR_CACHE_TTL_DAYS * 24 * 60 * 60 * 1000,
+    forceRefresh: env.FORCE_REFRESH
   });
 }

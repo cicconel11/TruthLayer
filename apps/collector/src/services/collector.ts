@@ -25,9 +25,27 @@ export async function createCollector({ config, logger }: CreateCollectorOptions
     async collect(query) {
       const results: Record<string, unknown>[] = [];
 
-      for (const [engineName, client] of Object.entries(engines)) {
-        logger.info("collecting", { queryId: query.id, engine: engineName });
-        const engineResults = await client.search(query);
+      // Run all engines in parallel instead of sequentially
+      const enginePromises = Object.entries(engines).map(async ([engineName, client]) => {
+        try {
+          logger.info("collecting", { queryId: query.id, engine: engineName });
+          const engineResults = await client.search(query);
+          return engineResults;
+        } catch (error) {
+          logger.error("engine collection failed", { 
+            queryId: query.id, 
+            engine: engineName,
+            error: (error as Error).message 
+          });
+          return [];
+        }
+      });
+
+      // Wait for all engines to complete
+      const allResults = await Promise.all(enginePromises);
+      
+      // Flatten results
+      for (const engineResults of allResults) {
         results.push(...engineResults);
       }
 

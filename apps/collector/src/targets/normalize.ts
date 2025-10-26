@@ -6,6 +6,7 @@ export interface RawSerpItem {
   title: string;
   snippet?: string;
   url: string;
+  confidence?: number;  // Quality indicator (0-1)
 }
 
 export function normalizeResults(params: {

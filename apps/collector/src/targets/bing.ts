@@ -3,7 +3,7 @@ import { BenchmarkQuery, SearchResult } from "@truthlayer/schema";
 import { CollectorConfig } from "../lib/config";
 import { Logger } from "../lib/logger";
 import { ensureRequestPermitted } from "../lib/compliance";
-import { ensureBrowser, randomUserAgent, takeHtmlSnapshot } from "./utils";
+import { ensureBrowser, randomUserAgent, takeHtmlSnapshot, waitForResults, validateExtraction, detectBotBlock, captureDebugSnapshot } from "./utils";
 import { normalizeResults, RawSerpItem } from "./normalize";
 import pRetry from "p-retry";
 
@@ -33,6 +33,20 @@ export function createBingClient({ config, logger }: CreateBingClientOptions) {
       );
 
       await new Promise(resolve => setTimeout(resolve, config.engines.bing.delayMs));
+
+      // Check for bot detection
+      const isBlocked = await detectBotBlock(page);
+      if (isBlocked) {
+        logger.warn("bot detection triggered", { 
+          engine: "bing",
+          query: query.query 
+        });
+        await captureDebugSnapshot(page, "bing", config.runId, query.id, "bot_detected");
+        return [];
+      }
+
+      // Wait for results to load
+      await waitForResults(page, ['li.b_algo', '.b_algo', '.b_searchResult'], 10000);
 
       const collectedAt = new Date();
       const htmlSnapshot = await page.content();
@@ -93,6 +107,22 @@ export function createBingClient({ config, logger }: CreateBingClientOptions) {
         return items;
       }, Math.min(config.maxResultsPerQuery, 20)) as RawSerpItem[];
 
+      // Validate extraction quality
+      const quality = validateExtraction(rawResults);
+      logger.info("extraction quality", {
+        engine: "bing",
+        query: query.query,
+        ...quality
+      });
+
+      if (quality.confidence < 0.3) {
+        logger.warn("low extraction confidence", {
+          engine: "bing",
+          confidence: quality.confidence,
+          warnings: quality.warnings
+        });
+      }
+
       return normalizeResults({
         engine: "bing",
         query,
@@ -101,10 +131,32 @@ export function createBingClient({ config, logger }: CreateBingClientOptions) {
         items: rawResults
       });
     } catch (error) {
-      logger.error("bing search failed", { query: query.query, error });
+      logger.error("bing search failed", { 
+        query: query.query, 
+        error: (error as Error).message 
+      });
+      
+      // Capture debug info
+      try {
+        const debugPath = await captureDebugSnapshot(
+          page,
+          "bing",
+          config.runId,
+          query.id,
+          "search_failed"
+        );
+        logger.info("debug snapshot saved", { path: debugPath });
+      } catch (debugError) {
+        logger.warn("failed to capture debug snapshot", { error: debugError });
+      }
+      
       throw error;
     } finally {
-      await page.close();
+      try {
+        await page.close();
+      } catch (closeError) {
+        // Page already closed, ignore
+      }
     }
   }
 
