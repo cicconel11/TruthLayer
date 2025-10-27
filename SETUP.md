@@ -86,9 +86,16 @@ Edit `.env` and update the following values:
 # Database connection (update with your PostgreSQL username)
 STORAGE_URL=postgres://YOUR_USERNAME@localhost:5432/truthlayer
 
-# API Keys (optional for basic testing, required for full functionality)
+# API Keys for LLM annotation (optional for basic testing)
 OPENAI_API_KEY=sk-your-key-here
 ANTHROPIC_API_KEY=sk-your-key-here
+
+# Search Engine API Keys (required for Google/Bing/Brave scrapers)
+# See "Optional: Search Engine APIs" section below for signup instructions
+GOOGLE_API_KEY=your-google-api-key
+GOOGLE_SEARCH_ENGINE_ID=your-cx-id
+BING_API_KEY=your-bing-api-key
+BRAVE_API_KEY=your-brave-api-key
 
 # Cache settings
 COLLECTOR_CACHE_TTL_DAYS=7
@@ -259,6 +266,70 @@ TruthLayer/
 └── config/            # Configuration files
     └── benchmark-queries.json
 ```
+
+---
+
+## Optional: Search Engine APIs
+
+To enable Google, Bing, and Brave scrapers, you need to sign up for their free API tiers. Perplexity works without an API key.
+
+### Google Custom Search API
+
+**Free Tier:** 100 queries/day
+
+1. Go to https://console.cloud.google.com/
+2. Create a new project or select existing
+3. Enable "Custom Search API" at https://console.cloud.google.com/apis/library/customsearch.googleapis.com
+4. Create credentials (API key) in the Credentials section
+5. Create a Programmable Search Engine at https://programmablesearchengine.google.com/
+   - Click "Add"
+   - Choose "Search the entire web"
+   - Create and note your Search Engine ID (cx parameter)
+6. Add to `.env`:
+   ```bash
+   GOOGLE_API_KEY=your-api-key-here
+   GOOGLE_SEARCH_ENGINE_ID=your-cx-id-here
+   ```
+
+**Cost after free tier:** $5 per 1,000 queries
+
+### Bing Web Search API
+
+**Free Tier:** 1,000 queries/month
+
+1. Go to https://portal.azure.com/
+2. Sign in or create Azure account
+3. Create resource: Bing Search v7
+4. Select Free pricing tier (F1)
+5. After deployment, go to "Keys and Endpoint"
+6. Copy one of the API keys
+7. Add to `.env`:
+   ```bash
+   BING_API_KEY=your-bing-api-key-here
+   ```
+
+**Cost after free tier:** $7 per 1,000 queries
+
+### Brave Search API
+
+**Free Tier:** 2,000 queries/month
+
+1. Go to https://brave.com/search/api/
+2. Sign up for an account
+3. Create an API key in the dashboard
+4. Add to `.env`:
+   ```bash
+   BRAVE_API_KEY=your-brave-api-key-here
+   ```
+
+**Cost after free tier:** $3-5 per 1,000 queries
+
+### Without API Keys
+
+If you don't configure these API keys:
+- Perplexity scraper will still work (no API key needed)
+- Google/Bing/Brave will log warnings and return empty results
+- You can still test the full pipeline with Perplexity-only data
 
 ---
 

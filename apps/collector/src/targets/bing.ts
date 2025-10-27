@@ -1,9 +1,7 @@
-import { Browser } from "puppeteer";
 import { BenchmarkQuery, SearchResult } from "@truthlayer/schema";
 import { CollectorConfig } from "../lib/config";
 import { Logger } from "../lib/logger";
-import { ensureRequestPermitted } from "../lib/compliance";
-import { ensureBrowser, randomUserAgent, takeHtmlSnapshot, waitForResults, validateExtraction, detectBotBlock, captureDebugSnapshot } from "./utils";
+import { loadEnv } from "@truthlayer/config";
 import { normalizeResults, RawSerpItem } from "./normalize";
 import pRetry from "p-retry";
 
@@ -12,154 +10,115 @@ interface CreateBingClientOptions {
   logger: Logger;
 }
 
+interface BingWebPage {
+  name: string;
+  url: string;
+  snippet?: string;
+  displayUrl?: string;
+}
+
+interface BingSearchResponse {
+  webPages?: {
+    value: BingWebPage[];
+  };
+  error?: {
+    code: string;
+    message: string;
+  };
+}
+
 export function createBingClient({ config, logger }: CreateBingClientOptions) {
-  let browser: Browser | null = null;
+  const env = loadEnv();
+  const apiKey = env.BING_API_KEY;
 
   async function search(query: BenchmarkQuery): Promise<SearchResult[]> {
-    const browserInstance = browser ?? (browser = await ensureBrowser(config));
-    const page = await browserInstance.newPage();
+    // If API key not configured, log warning and return empty
+    if (!apiKey) {
+      logger.warn("Bing API key not configured", {
+        engine: "bing",
+        query: query.query,
+        hint: "Set BING_API_KEY in .env"
+      });
+      return [];
+    }
 
     try {
-      await page.setUserAgent(randomUserAgent(config));
+      const maxResults = Math.min(config.maxResultsPerQuery, 50); // Bing API max is 50
+      const apiUrl = `https://api.bing.microsoft.com/v7.0/search?q=${encodeURIComponent(query.query)}&count=${maxResults}`;
 
-      const targetUrl = `https://www.bing.com/search?q=${encodeURIComponent(query.query)}`;
-      await ensureRequestPermitted(targetUrl, config, logger);
-
-      await pRetry(
+      const response = await pRetry(
         async () => {
-          await page.goto(targetUrl, { waitUntil: "domcontentloaded", timeout: 30_000 });
+          const res = await fetch(apiUrl, {
+            headers: {
+              "Ocp-Apim-Subscription-Key": apiKey
+            }
+          });
+          
+          if (!res.ok) {
+            const errorText = await res.text();
+            throw new Error(`Bing API error: ${res.status} ${errorText}`);
+          }
+          return res.json() as Promise<BingSearchResponse>;
         },
         { retries: 2, factor: 2 }
       );
 
-      await new Promise(resolve => setTimeout(resolve, config.engines.bing.delayMs));
-
-      // Check for bot detection
-      const isBlocked = await detectBotBlock(page);
-      if (isBlocked) {
-        logger.warn("bot detection triggered", { 
+      if (response.error) {
+        logger.error("Bing API returned error", {
           engine: "bing",
-          query: query.query 
+          query: query.query,
+          error: response.error.message
         });
-        await captureDebugSnapshot(page, "bing", config.runId, query.id, "bot_detected");
         return [];
       }
 
-      // Wait for results to load
-      await waitForResults(page, ['li.b_algo', '.b_algo', '.b_searchResult'], 10000);
+      if (!response.webPages || !response.webPages.value || response.webPages.value.length === 0) {
+        logger.warn("Bing API returned no results", {
+          engine: "bing",
+          query: query.query
+        });
+        return [];
+      }
 
       const collectedAt = new Date();
-      const htmlSnapshot = await page.content();
-      const { htmlPath } = await takeHtmlSnapshot({
-        engine: "bing",
-        runId: config.runId,
-        queryId: query.id,
-        html: htmlSnapshot
-      });
+      const rawResults: RawSerpItem[] = response.webPages.value.map((page, index) => ({
+        rank: index + 1,
+        title: page.name || "",
+        snippet: page.snippet || "",
+        url: page.url || "",
+        confidence: 1.0
+      }));
 
-      // Try robust set of selectors
-      const rawResults = await page.evaluate((max: number) => {
-        const selectors = [
-          "li.b_algo",
-          ".b_algo",
-          ".b_searchResult",
-          "[data-bm]"
-        ];
-        let els: Element[] = [];
-        for (const sel of selectors) {
-          els = Array.from(document.querySelectorAll(sel));
-          if (els.length) break;
-        }
-        const items = els.slice(0, max).map((el, i) => {
-          const titleEl = el.querySelector("h2 a, .b_title a, .b_topTitle a") as HTMLAnchorElement | null;
-          const snippetEl = el.querySelector(".b_caption p, .b_snippet, .b_dList, .b_paractl") as HTMLElement | null;
-          let url = titleEl?.href ?? "";
-    // unwrap redirect - improved base64 decoding
-    // @see https://developer.mozilla.org/en-US/docs/Web/API/atob
-    try {
-      if (url.includes("bing.com/ck/a?")) {
-        const u = new URL(url);
-        const raw = u.searchParams.get("u");
-        if (raw) {
-          // URL-safe base64 decode (replace URL-safe chars back to standard base64)
-          const base64 = raw.replace(/-/g, '+').replace(/_/g, '/');
-          const decoded = atob(base64);
-          // Decoded string should already be a valid URL
-          if (decoded.startsWith('http://') || decoded.startsWith('https://')) {
-            url = decoded;
-          } else {
-            // Invalid decoded URL - filter it out
-            url = "";
-          }
-        }
-      }
-    } catch (e) {
-      // Decoding failed - filter out this result
-      url = "";
-    }
-          return {
-            rank: i + 1,
-            title: (titleEl?.textContent || "").trim(),
-            snippet: (snippetEl?.textContent || "").trim(),
-            url
-          };
-        });
-        return items;
-      }, Math.min(config.maxResultsPerQuery, 20)) as RawSerpItem[];
-
-      // Validate extraction quality
-      const quality = validateExtraction(rawResults);
-      logger.info("extraction quality", {
+      logger.info("Bing API search successful", {
         engine: "bing",
         query: query.query,
-        ...quality
+        resultCount: rawResults.length
       });
 
-      if (quality.confidence < 0.3) {
-        logger.warn("low extraction confidence", {
-          engine: "bing",
-          confidence: quality.confidence,
-          warnings: quality.warnings
-        });
-      }
-
-      return normalizeResults({
+      const normalized = normalizeResults({
         engine: "bing",
         query,
+        rawResults,
         collectedAt,
-        rawHtmlPath: htmlPath,
-        items: rawResults
+        config,
+        rawHtmlPath: null // API-based, no HTML
       });
+
+      return normalized;
     } catch (error) {
-      logger.error("bing search failed", { 
-        query: query.query, 
-        error: (error as Error).message 
+      logger.error("Bing API search failed", {
+        engine: "bing",
+        query: query.query,
+        error: (error as Error).message
       });
-      
-      // Capture debug info
-      try {
-        const debugPath = await captureDebugSnapshot(
-          page,
-          "bing",
-          config.runId,
-          query.id,
-          "search_failed"
-        );
-        logger.info("debug snapshot saved", { path: debugPath });
-      } catch (debugError) {
-        logger.warn("failed to capture debug snapshot", { error: debugError });
-      }
-      
-      throw error;
-    } finally {
-      try {
-        await page.close();
-      } catch (closeError) {
-        // Page already closed, ignore
-      }
+      return [];
     }
   }
 
-  return { search };
-}
+  async function close() {
+    // No browser to close for API client
+    logger.info("Bing API client closed");
+  }
 
+  return { search, close };
+}
