@@ -1,103 +1,122 @@
 import { BenchmarkQuery, SearchResult } from "@truthlayer/schema";
 import { CollectorConfig } from "../lib/config";
 import { Logger } from "../lib/logger";
-import { loadEnv } from "@truthlayer/config";
+import { takeHtmlSnapshot } from "./utils";
 import { normalizeResults, RawSerpItem } from "./normalize";
-import pRetry from "p-retry";
+
+/**
+ * Brave Search API client
+ * 
+ * @see https://api.search.brave.com/app/documentation/web-search/get-started
+ * @see https://brave.com/search/api/
+ */
 
 interface CreateBraveClientOptions {
   config: CollectorConfig;
   logger: Logger;
 }
 
-interface BraveWebResult {
-  title: string;
-  url: string;
-  description?: string;
-  language?: string;
-}
-
-interface BraveSearchResponse {
+interface BraveApiResponse {
   web?: {
-    results: BraveWebResult[];
-  };
-  error?: {
-    code: string;
-    message: string;
+    results?: Array<{
+      title?: string;
+      description?: string;
+      url?: string;
+    }>;
   };
 }
 
 export function createBraveClient({ config, logger }: CreateBraveClientOptions) {
-  const env = loadEnv();
-  const apiKey = env.BRAVE_API_KEY;
-
   async function search(query: BenchmarkQuery): Promise<SearchResult[]> {
-    // If API key not configured, log warning and return empty
-    if (!apiKey) {
-      logger.warn("Brave API key not configured", {
-        engine: "brave",
+    if (!config.braveApiKey) {
+      logger.error("brave api key missing", { 
         query: query.query,
-        hint: "Set BRAVE_API_KEY in .env"
+        message: "BRAVE_API_KEY environment variable not set" 
       });
       return [];
     }
 
     try {
-      const maxResults = Math.min(config.maxResultsPerQuery, 20); // Brave API max is 20
-      const apiUrl = `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query.query)}&count=${maxResults}`;
-
-      const response = await pRetry(
-        async () => {
-          const res = await fetch(apiUrl, {
-            headers: {
-              "Accept": "application/json",
-              "Accept-Encoding": "gzip",
-              "X-Subscription-Token": apiKey
-            }
-          });
-          
-          if (!res.ok) {
-            const errorText = await res.text();
-            throw new Error(`Brave API error: ${res.status} ${errorText}`);
-          }
-          return res.json() as Promise<BraveSearchResponse>;
-        },
-        { retries: 2, factor: 2 }
-      );
-
-      if (response.error) {
-        logger.error("Brave API returned error", {
-          engine: "brave",
-          query: query.query,
-          error: response.error.message
-        });
-        return [];
-      }
-
-      if (!response.web || !response.web.results || response.web.results.length === 0) {
-        logger.warn("Brave API returned no results", {
-          engine: "brave",
-          query: query.query
-        });
-        return [];
-      }
-
-      const collectedAt = new Date();
-      const rawResults: RawSerpItem[] = response.web.results.map((result, index) => ({
-        rank: index + 1,
-        title: result.title || "",
-        snippet: result.description || "",
-        url: result.url || "",
-        confidence: 1.0
-      }));
-
-      logger.info("Brave API search successful", {
-        engine: "brave",
-        query: query.query,
-        resultCount: rawResults.length
+      const endpoint = "https://api.search.brave.com/res/v1/web/search";
+      const params = new URLSearchParams({
+        q: query.query,
+        count: Math.min(config.maxResultsPerQuery, 20).toString()
       });
 
-      const normalized = normalizeResults({
+      const url = `${endpoint}?${params.toString()}`;
+
+      logger.info("calling brave api", { 
+        query: query.query, 
+        count: config.maxResultsPerQuery 
+      });
+
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          "X-Subscription-Token": config.braveApiKey,
+          "Accept": "application/json",
+          "Accept-Encoding": "gzip"
+        }
+      });
+
+      if (!response.ok) {
+        const errorBody = await response.text();
+        logger.error("brave api error", {
+          query: query.query,
+          status: response.status,
+          statusText: response.statusText,
+          body: errorBody
+        });
+
+        if (response.status === 401) {
+          logger.error("brave api authentication failed", {
+            message: "Invalid API key. Check BRAVE_API_KEY in .env"
+          });
+        } else if (response.status === 429) {
+          logger.error("brave api rate limit exceeded", {
+            message: "Rate limit reached. Check your plan at https://api-dashboard.search.brave.com/"
+          });
+        }
+
+        return [];
+      }
+
+      const data: BraveApiResponse = await response.json();
+      const collectedAt = new Date();
+
+      // Save API response as JSON snapshot
+      const { htmlPath } = await takeHtmlSnapshot({
+        engine: "brave",
+        runId: config.runId,
+        queryId: query.id,
+        html: JSON.stringify(data, null, 2)
+      });
+
+      // Extract results from API response
+      const webResults = data.web?.results || [];
+      const rawResults: RawSerpItem[] = webResults
+        .filter(item => item.url && item.title)
+        .map((item, index) => ({
+          rank: index + 1,
+          title: (item.title || "").trim(),
+          snippet: (item.description || "").trim(),
+          url: item.url || ""
+        }));
+
+      logger.info("brave api results", {
+        query: query.query,
+        resultCount: rawResults.length,
+        apiResponseSize: webResults.length
+      });
+
+      if (rawResults.length === 0) {
+        logger.warn("brave api returned no valid results", { 
+          query: query.query,
+          totalResults: webResults.length
+        });
+      }
+
+      return normalizeResults({
         engine: "brave",
         query,
         rawResults,
@@ -105,22 +124,15 @@ export function createBraveClient({ config, logger }: CreateBraveClientOptions) 
         config,
         rawHtmlPath: null // API-based, no HTML
       });
-
-      return normalized;
     } catch (error) {
-      logger.error("Brave API search failed", {
-        engine: "brave",
-        query: query.query,
-        error: (error as Error).message
+      logger.error("brave search failed", { 
+        query: query.query, 
+        error: (error as Error).message,
+        stack: (error as Error).stack
       });
       return [];
     }
   }
 
-  async function close() {
-    // No browser to close for API client
-    logger.info("Brave API client closed");
-  }
-
-  return { search, close };
+  return { search };
 }

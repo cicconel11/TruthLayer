@@ -12,6 +12,8 @@ const CollectorConfigSchema = z.object({
   benchmarkQuerySetPath: z.string().default("config/benchmark-queries.json"),
   outputDir: z.string().default("data/serp"),
   proxyUrl: z.string().optional(),
+  braveApiKey: z.string().optional(),
+  bingApiKey: z.string().optional(),
   userAgent: z.string().default("TruthLayerBot/0.1 (https://truthlayer.ai)"),
   respectRobots: z.boolean().default(true),
   robotsCacheTtlMs: z.number().int().min(60000).max(86400000).default(3600000),
@@ -19,7 +21,8 @@ const CollectorConfigSchema = z.object({
     google: EngineConfigSchema,
     bing: EngineConfigSchema,
     perplexity: EngineConfigSchema,
-    brave: EngineConfigSchema
+    brave: EngineConfigSchema,
+    duckduckgo: EngineConfigSchema
   }),
   maxResultsPerQuery: z.number().int().min(1).max(100).default(20),
   cacheTtlMs: z.number().int().min(0).default(7 * 24 * 60 * 60 * 1000), // 7 days
@@ -36,11 +39,14 @@ export function makeCollectorConfig(): CollectorConfig {
       google: {},
       bing: {},
       perplexity: {},
-      brave: {}
+      brave: {},
+      duckduckgo: {}
     },
     benchmarkQuerySetPath: env.BENCHMARK_QUERY_SET_PATH,
     outputDir: env.COLLECTOR_OUTPUT_DIR,
     proxyUrl: env.PROXY_URL,
+    braveApiKey: env.BRAVE_API_KEY,
+    bingApiKey: env.BING_API_KEY,
     maxResultsPerQuery: env.COLLECTOR_MAX_RESULTS,
     userAgent: env.COLLECTOR_USER_AGENT,
     respectRobots: env.COLLECTOR_RESPECT_ROBOTS,

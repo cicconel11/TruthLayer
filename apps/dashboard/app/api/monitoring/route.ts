@@ -1,6 +1,16 @@
 import { NextResponse } from "next/server";
 import { createStorageClient } from "@truthlayer/storage";
 
+// Singleton storage client for DuckDB (doesn't support concurrent connections)
+let storageClient: ReturnType<typeof createStorageClient> | null = null;
+
+function getStorageClient() {
+  if (!storageClient) {
+    storageClient = createStorageClient();
+  }
+  return storageClient;
+}
+
 function computeAccuracy(records: { factualConsistency: string; count: number }[]) {
   const totals: Record<string, number> = {};
   for (const record of records) {
@@ -21,7 +31,7 @@ function computeAccuracy(records: { factualConsistency: string; count: number }[
 }
 
 export async function GET() {
-  const storage = createStorageClient();
+  const storage = getStorageClient();
   try {
     const pipelineRuns = await storage.fetchPipelineRuns({ limit: 20 });
     const runsWithStages = await Promise.all(
@@ -60,8 +70,7 @@ export async function GET() {
   } catch (error) {
     console.error("monitoring api error", error);
     return NextResponse.json({ error: "Failed to load monitoring data" }, { status: 500 });
-  } finally {
-    await storage.close();
   }
+  // Note: Don't close storage - using singleton pattern for DuckDB
 }
 

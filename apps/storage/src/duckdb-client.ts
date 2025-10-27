@@ -318,7 +318,7 @@ export class DuckDBStorageClient implements StorageClient {
     try {
       await this.ensureAnnotationTable(conn);
 
-      const placeholders = records.map(() => "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").join(", ");
+      const placeholders = records.map(() => "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").join(", ");
       const params: unknown[] = [];
 
       for (const record of records) {
@@ -382,7 +382,7 @@ export class DuckDBStorageClient implements StorageClient {
     try {
       await this.ensureSearchResultsTable(conn);
 
-      const placeholders = records.map(() => "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").join(", ");
+      const placeholders = records.map(() => "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").join(", ");
       const params: unknown[] = [];
 
       for (const record of records) {
@@ -516,12 +516,12 @@ export class DuckDBStorageClient implements StorageClient {
       const params: unknown[] = [];
 
       if (options.since) {
-        conditions.push("sr.timestamp >= ?");
+        conditions.push("sr.timestamp >= CAST(? AS TIMESTAMP)");
         params.push(options.since.toISOString());
       }
 
       if (options.until) {
-        conditions.push("sr.timestamp <= ?");
+        conditions.push("sr.timestamp <= CAST(? AS TIMESTAMP)");
         params.push(options.until.toISOString());
       }
 

@@ -4,6 +4,7 @@ import { createGoogleClient } from "./google";
 import { createBingClient } from "./bing";
 import { createPerplexityClient } from "./perplexity";
 import { createBraveClient } from "./brave";
+import { createDuckDuckGoClient } from "./duckduckgo";
 
 export interface SearchEngineClient {
   search: (query: { id: string; query: string; topic: string }) => Promise<Record<string, unknown>[]>;
@@ -27,6 +28,8 @@ export async function createEngineClient({
       return createPerplexityClient({ config, logger });
     case "brave":
       return createBraveClient({ config, logger });
+    case "duckduckgo":
+      return createDuckDuckGoClient({ config, logger });
     default:
       throw new Error(`Unsupported engine: ${engine}`);
   }

@@ -53,6 +53,16 @@ async function loadBenchmarkMetadata(): Promise<Record<string, QueryMeta>> {
   return {} as Record<string, QueryMeta>;
 }
 
+// Singleton storage client for DuckDB (doesn't support concurrent connections)
+let storageClient: ReturnType<typeof createStorageClient> | null = null;
+
+function getStorageClient() {
+  if (!storageClient) {
+    storageClient = createStorageClient();
+  }
+  return storageClient;
+}
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const limit = Number.parseInt(searchParams.get("limit") ?? "", 10) || DEFAULT_LIMIT;
@@ -61,7 +71,7 @@ export async function GET(request: Request) {
   const topicFilter = searchParams.get("topic") ?? undefined;
   const queryFilter = searchParams.get("queryId") ?? undefined;
 
-  const storage = createStorageClient();
+  const storage = getStorageClient();
   try {
     const metricsByType: Record<string, SerializedMetricRecord[]> = {};
     const runIds = new Set<string>();
@@ -99,8 +109,10 @@ export async function GET(request: Request) {
 
     const runIdList = Array.from(runIds);
 
+    // Fetch all annotation aggregates (don't filter by runIds from metrics)
+    // This ensures we show data even when metrics are aggregated
     const annotationAggregates = await storage.fetchAnnotationAggregates({
-      runIds: runIdList.length ? runIdList : undefined,
+      // runIds: runIdList.length ? runIdList : undefined,  // Commented out to show all data
       engines: engineFilter ? [engineFilter] : undefined,
       queryIds: queryFilter ? [queryFilter] : undefined
     });
@@ -146,6 +158,18 @@ export async function GET(request: Request) {
     for (const record of aggregatesSerialised) {
       if (record.engine) engines.add(record.engine);
     }
+    
+    // Extract engines from metrics extra data as fallback
+    for (const metricType of Object.keys(metricsByType)) {
+      for (const metric of metricsByType[metricType]) {
+        if (metric.extra && typeof metric.extra === 'object') {
+          const perEngine = (metric.extra as any).perEngine;
+          if (perEngine && typeof perEngine === 'object') {
+            Object.keys(perEngine).forEach(engine => engines.add(engine));
+          }
+        }
+      }
+    }
 
     const response = {
       metrics: metricsByType,
@@ -162,7 +186,6 @@ export async function GET(request: Request) {
   } catch (error) {
     console.error("metrics api error", error);
     return NextResponse.json({ error: "Failed to load metrics" }, { status: 500 });
-  } finally {
-    await storage.close();
   }
+  // Note: Don't close storage - using singleton pattern for DuckDB
 }

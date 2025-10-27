@@ -1,101 +1,122 @@
 import { BenchmarkQuery, SearchResult } from "@truthlayer/schema";
 import { CollectorConfig } from "../lib/config";
 import { Logger } from "../lib/logger";
-import { loadEnv } from "@truthlayer/config";
+import { takeHtmlSnapshot } from "./utils";
 import { normalizeResults, RawSerpItem } from "./normalize";
-import pRetry from "p-retry";
+
+/**
+ * Bing Web Search API v7 client
+ * 
+ * @see https://learn.microsoft.com/en-us/bing/search-apis/bing-web-search/overview
+ * @see https://learn.microsoft.com/en-us/bing/search-apis/bing-web-search/reference/query-parameters
+ */
 
 interface CreateBingClientOptions {
   config: CollectorConfig;
   logger: Logger;
 }
 
-interface BingWebPage {
-  name: string;
-  url: string;
-  snippet?: string;
-  displayUrl?: string;
-}
-
-interface BingSearchResponse {
+interface BingApiResponse {
   webPages?: {
-    value: BingWebPage[];
-  };
-  error?: {
-    code: string;
-    message: string;
+    value?: Array<{
+      name?: string;
+      snippet?: string;
+      url?: string;
+    }>;
   };
 }
 
 export function createBingClient({ config, logger }: CreateBingClientOptions) {
-  const env = loadEnv();
-  const apiKey = env.BING_API_KEY;
-
   async function search(query: BenchmarkQuery): Promise<SearchResult[]> {
-    // If API key not configured, log warning and return empty
-    if (!apiKey) {
-      logger.warn("Bing API key not configured", {
-        engine: "bing",
+    if (!config.bingApiKey) {
+      logger.error("bing api key missing", { 
         query: query.query,
-        hint: "Set BING_API_KEY in .env"
+        message: "BING_API_KEY environment variable not set" 
       });
       return [];
     }
 
     try {
-      const maxResults = Math.min(config.maxResultsPerQuery, 50); // Bing API max is 50
-      const apiUrl = `https://api.bing.microsoft.com/v7.0/search?q=${encodeURIComponent(query.query)}&count=${maxResults}`;
-
-      const response = await pRetry(
-        async () => {
-          const res = await fetch(apiUrl, {
-            headers: {
-              "Ocp-Apim-Subscription-Key": apiKey
-            }
-          });
-          
-          if (!res.ok) {
-            const errorText = await res.text();
-            throw new Error(`Bing API error: ${res.status} ${errorText}`);
-          }
-          return res.json() as Promise<BingSearchResponse>;
-        },
-        { retries: 2, factor: 2 }
-      );
-
-      if (response.error) {
-        logger.error("Bing API returned error", {
-          engine: "bing",
-          query: query.query,
-          error: response.error.message
-        });
-        return [];
-      }
-
-      if (!response.webPages || !response.webPages.value || response.webPages.value.length === 0) {
-        logger.warn("Bing API returned no results", {
-          engine: "bing",
-          query: query.query
-        });
-        return [];
-      }
-
-      const collectedAt = new Date();
-      const rawResults: RawSerpItem[] = response.webPages.value.map((page, index) => ({
-        rank: index + 1,
-        title: page.name || "",
-        snippet: page.snippet || "",
-        url: page.url || "",
-        confidence: 1.0
-      }));
-
-      logger.info("Bing API search successful", {
-        engine: "bing",
-        query: query.query,
-        resultCount: rawResults.length
+      const endpoint = "https://api.bing.microsoft.com/v7.0/search";
+      const params = new URLSearchParams({
+        q: query.query,
+        count: Math.min(config.maxResultsPerQuery, 50).toString(),
+        responseFilter: "Webpages"
       });
 
-      const normalized = normalizeResults({
+      const url = `${endpoint}?${params.toString()}`;
+
+      logger.info("calling bing api", { 
+        query: query.query, 
+        count: config.maxResultsPerQuery 
+      });
+
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          "Ocp-Apim-Subscription-Key": config.bingApiKey,
+          "Accept": "application/json"
+        }
+      });
+
+      if (!response.ok) {
+        const errorBody = await response.text();
+        logger.error("bing api error", {
+          query: query.query,
+          status: response.status,
+          statusText: response.statusText,
+          body: errorBody
+        });
+
+        if (response.status === 401) {
+          logger.error("bing api authentication failed", {
+            message: "Invalid API key. Check BING_API_KEY in .env"
+          });
+        } else if (response.status === 429) {
+          logger.error("bing api rate limit exceeded", {
+            message: "Rate limit reached. Check your Azure quota."
+          });
+        }
+
+        return [];
+      }
+
+      const data: BingApiResponse = await response.json();
+      const collectedAt = new Date();
+
+      // Save API response as JSON snapshot
+      const { htmlPath } = await takeHtmlSnapshot({
+        engine: "bing",
+        runId: config.runId,
+        queryId: query.id,
+        html: JSON.stringify(data, null, 2)
+      });
+
+      // Extract results from API response
+      const webPages = data.webPages?.value || [];
+      const rawResults: RawSerpItem[] = webPages
+        .filter(item => item.url && item.name)
+        .map((item, index) => ({
+          rank: index + 1,
+          title: (item.name || "").trim(),
+          snippet: (item.snippet || "").trim(),
+          url: item.url || ""
+        }));
+
+      logger.info("bing api results", {
+        query: query.query,
+        resultCount: rawResults.length,
+        apiResponseSize: webPages.length
+      });
+
+      if (rawResults.length === 0) {
+        logger.warn("bing api returned no valid results", { 
+          query: query.query,
+          totalResults: webPages.length
+        });
+      }
+
+      return normalizeResults({
         engine: "bing",
         query,
         rawResults,
@@ -103,22 +124,15 @@ export function createBingClient({ config, logger }: CreateBingClientOptions) {
         config,
         rawHtmlPath: null // API-based, no HTML
       });
-
-      return normalized;
     } catch (error) {
-      logger.error("Bing API search failed", {
-        engine: "bing",
-        query: query.query,
-        error: (error as Error).message
+      logger.error("bing search failed", { 
+        query: query.query, 
+        error: (error as Error).message,
+        stack: (error as Error).stack
       });
       return [];
     }
   }
 
-  async function close() {
-    // No browser to close for API client
-    logger.info("Bing API client closed");
-  }
-
-  return { search, close };
+  return { search };
 }
