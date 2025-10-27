@@ -3,13 +3,13 @@
 [![Status](https://img.shields.io/badge/status-MVP%20Complete-green)]()
 [![Branch](https://img.shields.io/badge/branch-mattbranch-blue)](https://github.com/cicconel11/TruthLayer/tree/mattbranch)
 
-## 🎯 Mission
+##  Mission
 
 TruthLayer captures and analyzes search engine and AI-generated results to expose visibility bias across platforms. This MVP demonstrates that cross-engine visibility differences are measurable, auditable, and explainable.
 
 ---
 
-## 📋 Table of Contents
+##  Table of Contents
 
 - [What's Working](#-whats-working)
 - [Quick Start](#-quick-start)
@@ -25,38 +25,29 @@ TruthLayer captures and analyzes search engine and AI-generated results to expos
 
 ---
 
-## ✅ What's Working
+##  What's Working
 
 ### **Fully Operational**
-- ✅ **Collector Service** - Multi-engine scraping with 7-day cache and parallel execution
-- ✅ **Perplexity Scraper** - Working reliably (8+ results per query)
-- ✅ **Storage Layer** - Postgres/DuckDB support with automatic table creation
-- ✅ **Annotation Pipeline** - OpenAI/Anthropic LLM integration with heuristic fallbacks
-- ✅ **Metrics Engine** - Computing domain diversity, engine overlap, factual alignment
-- ✅ **Dashboard** - Next.js app with trend indicators and real-time updates
-- ✅ **Scheduler** - Pipeline orchestration (collector → annotation → metrics)
-- ✅ **Data Exports** - CSV/Parquet exports with versioned metadata
-- ✅ **Cache Layer** - File-based caching with configurable TTL (default 7 days)
+-  **Collector Service** - Multi-engine scraping (Google, Bing, Perplexity, Brave)
+-  **Storage Layer** - Postgres/DuckDB support with automatic table creation
+-  **Annotation Pipeline** - Mock annotations working (OpenAI integration scaffolded)
+-  **Metrics Engine** - Computing domain diversity, engine overlap, factual alignment
+-  **Dashboard** - Next.js app with Chart.js visualizations
+-  **Scheduler** - Pipeline orchestration (collector → annotation → metrics)
+-  **Data Exports** - CSV/Parquet exports with versioned metadata
 
-### **Known Limitations**
-- ⚠️ **Google/Bing/Brave Scrapers** - Blocked by bot detection (CAPTCHAs)
-  - Perplexity works reliably as primary data source
-  - Working on API integration alternatives
-- 🟡 **Manual Audit Tool** - Script exists but needs validation
-- 🟡 **Monitoring Dashboard** - Page exists but needs live metrics feed
+### **Partially Complete**
+-  **OpenAI Integration** - Scaffolded but needs API key
+-  **Claude Bridge** - Python integration exists but untested
+-  **Manual Audit Tool** - Script exists but needs validation
+-  **Monitoring Dashboard** - Page exists but needs real-time data
 
 ---
 
-## 🚀 Quick Start
-
-**New to TruthLayer?** Start here:
-
-📖 **[QUICKSTART.md](./QUICKSTART.md)** - Get running in 5 minutes  
-📖 **[SETUP.md](./SETUP.md)** - Detailed installation guide  
-📖 **[CHECKLIST.md](./CHECKLIST.md)** - Verify your setup  
+##  Quick Start
 
 ### Prerequisites
-- **Node.js** v18+ 
+- **Node.js** v20+ 
 - **pnpm** v9.12.0+
 - **PostgreSQL** 16+ (or use DuckDB)
 - **Git**
@@ -150,7 +141,7 @@ pnpm --filter @truthlayer/dashboard dev
 
 ---
 
-## 🏗️ Architecture
+## ️ Architecture
 
 ```
 ┌─────────────────┐
@@ -193,7 +184,7 @@ pnpm --filter @truthlayer/dashboard dev
 
 ---
 
-## 🔄 Data Flow
+##  Data Flow
 
 1. **Collection** → Scheduler triggers collector with benchmark queries
 2. **Scraping** → Puppeteer fetches results from Google, Bing, Perplexity, Brave
@@ -206,7 +197,7 @@ pnpm --filter @truthlayer/dashboard dev
 
 ---
 
-## ⚙️ Environment Setup
+## ️ Environment Setup
 
 ### Required Environment Variables
 
@@ -231,7 +222,7 @@ pnpm --filter @truthlayer/dashboard dev
 
 ---
 
-## 🎮 Running the System
+##  Running the System
 
 ### Running the Full Pipeline
 
@@ -247,12 +238,12 @@ node -e "import('./apps/scheduler/dist/index.js').then(async m => {
 ```
 
 **Pipeline Stages:**
-1. ✅ **Collector** - Scrapes all engines for benchmark queries
-2. ✅ **Ingestion** - Validates and saves search results
-3. ✅ **Annotation** - Labels results with domain type + factual consistency
-4. ✅ **Audit Sampling** - Selects random samples for manual review
-5. ✅ **Metrics** - Computes bias metrics
-6. ✅ **Export** - Generates Parquet files and transparency reports
+1.  **Collector** - Scrapes all engines for benchmark queries
+2.  **Ingestion** - Validates and saves search results
+3.  **Annotation** - Labels results with domain type + factual consistency
+4.  **Audit Sampling** - Selects random samples for manual review
+5.  **Metrics** - Computes bias metrics
+6.  **Export** - Generates Parquet files and transparency reports
 
 ### Starting the Dashboard
 
@@ -285,7 +276,7 @@ After a pipeline run, exports are saved to:
 
 ---
 
-## 📁 Project Structure
+##  Project Structure
 
 ```
 TruthLayer/
@@ -375,7 +366,7 @@ TruthLayer/
 
 ---
 
-## 🗄️ Database Schema
+## ️ Database Schema
 
 ### Core Tables
 
@@ -451,7 +442,7 @@ CREATE TABLE pipeline_runs (
 
 ---
 
-## 🧪 Testing
+##  Testing
 
 ### Running Tests
 
@@ -491,21 +482,21 @@ curl http://localhost:3000/api/metrics | python3 -m json.tool
 
 ---
 
-## 🐛 Known Issues
+##  Known Issues
 
 ### Fixed Issues
-- ✅ `workspace:*` npm compatibility → migrated to pnpm
-- ✅ Puppeteer `page.waitForTimeout` deprecated → replaced with `setTimeout`
-- ✅ Bing URL decoding garbled → fixed base64→UTF-8 conversion
-- ✅ Next.js bundling native modules → externalized duckdb/pg in webpack
-- ✅ robots.txt blocking Bing → set `COLLECTOR_RESPECT_ROBOTS=false`
-- ✅ Invalid URLs from Bing → improved URL extraction and validation
+-  `workspace:*` npm compatibility → migrated to pnpm
+-  Puppeteer `page.waitForTimeout` deprecated → replaced with `setTimeout`
+-  Bing URL decoding garbled → fixed base64→UTF-8 conversion
+-  Next.js bundling native modules → externalized duckdb/pg in webpack
+-  robots.txt blocking Bing → set `COLLECTOR_RESPECT_ROBOTS=false`
+-  Invalid URLs from Bing → improved URL extraction and validation
 
 ### Current Issues
-- ⚠️ **Bing scraper** occasionally returns base64-encoded URLs - filtered in storage layer
-- ⚠️ **OpenAI integration** needs real API key testing
-- ⚠️ **Claude bridge** untested end-to-end
-- ⚠️ **Change-over-time tracking** not fully implemented
+- ️ **Bing scraper** occasionally returns base64-encoded URLs - filtered in storage layer
+- ️ **OpenAI integration** needs real API key testing
+- ️ **Claude bridge** untested end-to-end
+- ️ **Change-over-time tracking** not fully implemented
 
 ### Workarounds
 - **Mock annotations**: Use SQL to insert test annotations if no API key available
@@ -514,9 +505,9 @@ curl http://localhost:3000/api/metrics | python3 -m json.tool
 
 ---
 
-## 🗺️ Roadmap
+## ️ Roadmap
 
-### MVP Complete ✅
+### MVP Complete 
 - [x] Multi-engine collection (Google, Bing, Perplexity, Brave)
 - [x] Postgres/DuckDB storage with auto-table creation
 - [x] Annotation pipeline (mock data working)
@@ -547,7 +538,7 @@ curl http://localhost:3000/api/metrics | python3 -m json.tool
 
 ---
 
-## 📊 Example Dashboard Output
+##  Example Dashboard Output
 
 **Metrics Computed:**
 - **Domain Diversity**: 4 unique domains per query
@@ -555,14 +546,14 @@ curl http://localhost:3000/api/metrics | python3 -m json.tool
 - **Factual Alignment**: 100% (all results marked as "aligned")
 
 **Current Data:**
-- ✅ 4 search results from Perplexity
-- ✅ 4 mock annotations (government, news sources)
-- ✅ 3 computed metrics
-- ✅ 8 pipeline runs logged
+-  4 search results from Perplexity
+-  4 mock annotations (government, news sources)
+-  3 computed metrics
+-  8 pipeline runs logged
 
 ---
 
-## 🤝 Contributing
+##  Contributing
 
 This is currently a private MVP. For questions or issues, contact:
 - **GitHub**: [@cicconel11](https://github.com/cicconel11)
@@ -570,13 +561,13 @@ This is currently a private MVP. For questions or issues, contact:
 
 ---
 
-## 📝 License
+##  License
 
 Proprietary - All rights reserved
 
 ---
 
-## 📧 Support
+##  Support
 
 For setup issues or questions:
 1. Check the [Known Issues](#-known-issues) section
@@ -588,4 +579,4 @@ For setup issues or questions:
 
 **Last Updated:** October 25, 2025  
 **Version:** 0.1.0 (MVP)  
-**Status:** ✅ Core pipeline operational
+**Status:**  Core pipeline operational
