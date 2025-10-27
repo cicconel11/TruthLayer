@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const EngineEnum = z.enum(["google", "bing", "perplexity", "brave"]);
+export const EngineEnum = z.enum(["google", "bing", "perplexity", "brave", "duckduckgo"]);
 
 export const SearchResultSchema = z.object({
   id: z.string().uuid("search_result_id must be a UUID"),

@@ -28,13 +28,13 @@ TruthLayer captures and analyzes search engine and AI-generated results to expos
 ##  What's Working
 
 ### **Fully Operational**
--  **Collector Service** - Multi-engine scraping (Google, Bing, Perplexity, Brave)
--  **Storage Layer** - Postgres/DuckDB support with automatic table creation
--  **Annotation Pipeline** - Mock annotations working (OpenAI integration scaffolded)
--  **Metrics Engine** - Computing domain diversity, engine overlap, factual alignment
--  **Dashboard** - Next.js app with Chart.js visualizations
--  **Scheduler** - Pipeline orchestration (collector → annotation → metrics)
--  **Data Exports** - CSV/Parquet exports with versioned metadata
+- ✅ **Collector Service** - Multi-engine scraping (Google, Bing, Perplexity, Brave, DuckDuckGo)
+- ✅ **Storage Layer** - Postgres/DuckDB support with automatic table creation
+- ✅ **Annotation Pipeline** - Mock annotations working (OpenAI integration scaffolded)
+- ✅ **Metrics Engine** - Computing domain diversity, engine overlap, factual alignment
+- ✅ **Dashboard** - Next.js app with Chart.js visualizations
+- ✅ **Scheduler** - Pipeline orchestration (collector → annotation → metrics)
+- ✅ **Data Exports** - CSV/Parquet exports with versioned metadata
 
 ### **Partially Complete**
 -  **OpenAI Integration** - Scaffolded but needs API key
@@ -87,7 +87,11 @@ STORAGE_URL=postgres://postgres:postgres@localhost:5432/truthlayer
 # OR
 # STORAGE_URL=duckdb://data/truthlayer.duckdb
 
-# API Keys (optional for testing with mock data)
+# Search Engine API Keys (required for Brave and Bing, DuckDuckGo requires no key)
+BRAVE_API_KEY=brv-xxxxxxxxxxxxxxxxxxxxxxxx
+BING_API_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+# LLM API Keys (optional for testing with mock data)
 # OPENAI_API_KEY=sk-...
 # ANTHROPIC_API_KEY=sk-ant-...
 
@@ -96,6 +100,7 @@ BENCHMARK_QUERY_SET_PATH=config/benchmark-queries.json
 COLLECTOR_OUTPUT_DIR=data/serp
 COLLECTOR_MAX_RESULTS=20
 COLLECTOR_RESPECT_ROBOTS=false
+FORCE_REFRESH=false
 
 # Annotation Settings
 ANNOTATION_PROVIDER=openai
@@ -109,6 +114,32 @@ METRICS_WINDOW_SIZE=7
 # Logging
 LOG_LEVEL=info
 ```
+
+#### Getting API Keys
+
+**Brave Search API:**
+1. Go to https://brave.com/search/api/
+2. Click "Get started for free" and create an account
+3. Navigate to API dashboard: https://api-dashboard.search.brave.com/
+4. Create a new API key
+5. Copy the key (starts with `brv-`)
+6. Add to `.env`: `BRAVE_API_KEY=brv-...`
+
+**Bing Web Search API v7:**
+1. Log in to Azure Portal: https://portal.azure.com/
+2. Create resource → Search for "Bing Search v7"
+3. Create a new Bing Search v7 resource
+4. Go to "Keys and Endpoint"
+5. Copy Key 1 or Key 2
+6. Add to `.env`: `BING_API_KEY=...`
+
+**DuckDuckGo:**
+- **No API key required** - Uses public Instant Answer API
+- Provides privacy-focused, non-personalized baseline for bias analysis
+- Automatically falls back to HTML scraping if API returns insufficient results
+- Offers unbiased control for factual consistency comparisons
+
+**Note:** Google and Perplexity currently use Puppeteer web scraping (no API key required).
 
 ### 4. Build All Packages
 
@@ -187,7 +218,7 @@ pnpm --filter @truthlayer/dashboard dev
 ##  Data Flow
 
 1. **Collection** → Scheduler triggers collector with benchmark queries
-2. **Scraping** → Puppeteer fetches results from Google, Bing, Perplexity, Brave
+2. **Fetching** → REST APIs (Brave, Bing) and Puppeteer scraping (Google, Perplexity) fetch results
 3. **Normalization** → Results normalized to common schema with URL deduplication
 4. **Storage** → Search results + metadata saved to Postgres/DuckDB
 5. **Annotation** → LLM classifies domain type + factual consistency
@@ -204,6 +235,8 @@ pnpm --filter @truthlayer/dashboard dev
 | Variable | Description | Example |
 |----------|-------------|---------|
 | `STORAGE_URL` | Database connection string | `postgres://user:pass@localhost:5432/truthlayer` |
+| `BRAVE_API_KEY` | Brave Search API key (starts with `brv-`) | `brv-abcdef123456...` |
+| `BING_API_KEY` | Bing Web Search API v7 key | `abc123...` |
 | `BENCHMARK_QUERY_SET_PATH` | Path to benchmark queries JSON | `config/benchmark-queries.json` |
 | `COLLECTOR_OUTPUT_DIR` | Directory for scraper output | `data/serp` |
 
@@ -215,8 +248,9 @@ pnpm --filter @truthlayer/dashboard dev
 | `ANTHROPIC_API_KEY` | - | Anthropic API key for Claude annotations |
 | `ANNOTATION_PROVIDER` | `openai` | LLM provider: `openai`, `claude`, or `auto` |
 | `ANNOTATION_MODEL` | `gpt-4o-mini` | Model to use for annotations |
-| `COLLECTOR_MAX_RESULTS` | `20` | Max results per query |
-| `COLLECTOR_RESPECT_ROBOTS` | `false` | Honor robots.txt |
+| `COLLECTOR_MAX_RESULTS` | `20` | Max results per query (20 for Brave, 50 for Bing) |
+| `COLLECTOR_RESPECT_ROBOTS` | `false` | Honor robots.txt (applies to Puppeteer scrapers only) |
+| `FORCE_REFRESH` | `false` | Bypass cache and fetch fresh results |
 | `METRICS_WINDOW_SIZE` | `7` | Days for rolling window metrics |
 | `LOG_LEVEL` | `info` | Logging level: `debug`, `info`, `warn`, `error` |
 
@@ -261,7 +295,7 @@ The dashboard shows:
 - **Factual Alignment** - Proportion of aligned vs contradicted results
 
 Filter by:
-- Engine (Google, Bing, Perplexity, Brave)
+- Engine (Google, Bing, Perplexity, Brave, DuckDuckGo)
 - Topic (from benchmark queries)
 - Individual queries
 - Date range
@@ -288,6 +322,7 @@ TruthLayer/
 │   │   │   │   ├── bing.ts
 │   │   │   │   ├── perplexity.ts
 │   │   │   │   ├── brave.ts
+│   │   │   │   ├── duckduckgo.ts
 │   │   │   │   └── normalize.ts
 │   │   │   ├── services/
 │   │   │   └── runner/
@@ -493,22 +528,39 @@ curl http://localhost:3000/api/metrics | python3 -m json.tool
 -  Invalid URLs from Bing → improved URL extraction and validation
 
 ### Current Issues
-- ️ **Bing scraper** occasionally returns base64-encoded URLs - filtered in storage layer
-- ️ **OpenAI integration** needs real API key testing
-- ️ **Claude bridge** untested end-to-end
-- ️ **Change-over-time tracking** not fully implemented
+- ⚠️ **OpenAI integration** needs real API key testing
+- ⚠️ **Claude bridge** untested end-to-end
+- ⚠️ **Change-over-time tracking** not fully implemented
+
+### API Troubleshooting
+
+**Brave Search API Errors:**
+- **401 Unauthorized**: Invalid API key. Verify `BRAVE_API_KEY` in `.env` starts with `brv-`
+- **429 Rate Limit**: Exceeded free tier quota. Check usage at https://api-dashboard.search.brave.com/
+- **Empty Results**: API returned successfully but no results. Check query formatting and API response logs.
+
+**Bing Search API Errors:**
+- **401 Unauthorized**: Invalid API key. Verify `BING_API_KEY` in `.env` matches Azure portal key
+- **429 Rate Limit**: Exceeded Azure quota. Check Azure portal for resource limits
+- **403 Forbidden**: API endpoint region mismatch. Ensure using global endpoint: `api.bing.microsoft.com`
+
+**General Collector Issues:**
+- **Missing API Keys**: Collector will log error and return empty results for that engine
+- **Network Errors**: Check firewall/proxy settings. API calls require outbound HTTPS
+- **Build Errors**: Run `pnpm --filter "./**" build` to rebuild all packages
 
 ### Workarounds
 - **Mock annotations**: Use SQL to insert test annotations if no API key available
 - **Port conflicts**: Dashboard auto-selects next available port (3000, 3001, 3002, etc.)
-- **Build errors**: Run `pnpm --filter "./**" build` to rebuild all packages
+- **Testing without API keys**: Google and Perplexity still work with Puppeteer scraping
 
 ---
 
 ## ️ Roadmap
 
-### MVP Complete 
-- [x] Multi-engine collection (Google, Bing, Perplexity, Brave)
+### MVP Complete ✅
+- [x] Multi-engine collection (Google, Bing, Perplexity, Brave, DuckDuckGo)
+- [x] **REST API integration for Brave, Bing, and DuckDuckGo** (Puppeteer for Google/Perplexity)
 - [x] Postgres/DuckDB storage with auto-table creation
 - [x] Annotation pipeline (mock data working)
 - [x] Metrics computation (domain diversity, overlap, factual alignment)
@@ -528,7 +580,7 @@ curl http://localhost:3000/api/metrics | python3 -m json.tool
 - [ ] Create data quality validation tests
 
 ### Future Enhancements
-- [ ] Add more search engines (DuckDuckGo, Yahoo, Yandex)
+- [ ] Add more search engines (Yahoo, Yandex, etc.)
 - [ ] Implement result clustering/similarity detection
 - [ ] Add sentiment analysis
 - [ ] Create public API for metrics access
