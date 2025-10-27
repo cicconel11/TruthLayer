@@ -1,145 +1,120 @@
 import { BenchmarkQuery, SearchResult } from "@truthlayer/schema";
-import { Browser } from "puppeteer";
 import { CollectorConfig } from "../lib/config";
 import { Logger } from "../lib/logger";
-import { ensureRequestPermitted } from "../lib/compliance";
-import { ensureBrowser, randomUserAgent, takeHtmlSnapshot, waitForResults, validateExtraction, detectBotBlock, captureDebugSnapshot } from "./utils";
+import { loadEnv } from "@truthlayer/config";
 import { normalizeResults, RawSerpItem } from "./normalize";
 import pRetry from "p-retry";
+import { v4 as uuidv4 } from "uuid";
+import crypto from "crypto";
 
 interface CreateGoogleClientOptions {
   config: CollectorConfig;
   logger: Logger;
 }
 
+interface GoogleSearchItem {
+  title: string;
+  link: string;
+  snippet?: string;
+  displayLink?: string;
+}
+
+interface GoogleSearchResponse {
+  items?: GoogleSearchItem[];
+  error?: {
+    code: number;
+    message: string;
+  };
+}
+
 export function createGoogleClient({ config, logger }: CreateGoogleClientOptions) {
-  let browser: Browser | null = null;
+  const env = loadEnv();
+  const apiKey = env.GOOGLE_API_KEY;
+  const searchEngineId = env.GOOGLE_SEARCH_ENGINE_ID;
 
   async function search(query: BenchmarkQuery): Promise<SearchResult[]> {
-    const browserInstance = browser ?? (browser = await ensureBrowser(config));
-    const page = await browserInstance.newPage();
+    // If API keys not configured, log warning and return empty
+    if (!apiKey || !searchEngineId) {
+      logger.warn("Google API credentials not configured", {
+        engine: "google",
+        query: query.query,
+        hint: "Set GOOGLE_API_KEY and GOOGLE_SEARCH_ENGINE_ID in .env"
+      });
+      return [];
+    }
 
     try {
-      await page.setUserAgent(randomUserAgent(config));
+      const maxResults = Math.min(config.maxResultsPerQuery, 10); // Google API max is 10 per request
+      const apiUrl = `https://www.googleapis.com/customsearch/v1?key=${apiKey}&cx=${searchEngineId}&q=${encodeURIComponent(query.query)}&num=${maxResults}`;
 
-      const targetUrl = `https://www.google.com/search?q=${encodeURIComponent(query.query)}`;
-      await ensureRequestPermitted(targetUrl, config, logger);
-      await pRetry(
+      const response = await pRetry(
         async () => {
-          await page.goto(targetUrl, { waitUntil: "domcontentloaded", timeout: 30_000 });
+          const res = await fetch(apiUrl);
+          if (!res.ok) {
+            const errorText = await res.text();
+            throw new Error(`Google API error: ${res.status} ${errorText}`);
+          }
+          return res.json() as Promise<GoogleSearchResponse>;
         },
         { retries: 2, factor: 2 }
       );
 
-      await new Promise(resolve => setTimeout(resolve, config.engines.google.delayMs));
-
-      // Check for bot detection
-      const isBlocked = await detectBotBlock(page);
-      if (isBlocked) {
-        logger.warn("bot detection triggered", { 
+      if (response.error) {
+        logger.error("Google API returned error", {
           engine: "google",
-          query: query.query 
+          query: query.query,
+          error: response.error.message
         });
-        await captureDebugSnapshot(page, "google", config.runId, query.id, "bot_detected");
         return [];
       }
 
-      // Wait for results to load
-      await waitForResults(page, ['div.g', '.g'], 10000);
+      if (!response.items || response.items.length === 0) {
+        logger.warn("Google API returned no results", {
+          engine: "google",
+          query: query.query
+        });
+        return [];
+      }
 
       const collectedAt = new Date();
-      const htmlSnapshot = await page.content();
-      const { htmlPath: rawHtmlFile } = await takeHtmlSnapshot({
-        engine: "google",
-        runId: config.runId,
-        queryId: query.id,
-        html: htmlSnapshot
-      });
+      const rawResults: RawSerpItem[] = response.items.map((item, index) => ({
+        rank: index + 1,
+        title: item.title || "",
+        snippet: item.snippet || "",
+        url: item.link || "",
+        confidence: 1.0
+      }));
 
-      const rawResults = await page.evaluate((max: number) => {
-        // Try multiple selector strategies
-        const strategies = [
-          { container: 'div.g', title: 'h3', link: 'a', snippet: 'div[style*="-webkit-line-clamp"]' },
-          { container: '.g', title: 'h3', link: 'a[href]', snippet: '.VwiC3b' },
-          { container: '[data-sokoban-container]', title: 'h3', link: 'a', snippet: 'div' }
-        ];
-        
-        for (const strategy of strategies) {
-          const containers = Array.from(document.querySelectorAll(strategy.container));
-          if (containers.length === 0) continue;
-          
-          const items = containers.slice(0, max).map((el, i) => {
-            const titleEl = el.querySelector(strategy.title);
-            const linkEl = el.querySelector(strategy.link) as HTMLAnchorElement;
-            const snippetEl = el.querySelector(strategy.snippet);
-            
-            return {
-              rank: i + 1,
-              title: titleEl?.textContent?.trim() ?? "",
-              snippet: snippetEl?.textContent?.trim() ?? "",
-              url: linkEl?.href ?? "",
-              confidence: linkEl?.href ? 1.0 : 0.3
-            };
-          });
-          
-          if (items.length > 0) return items;
-        }
-        
-        return [];
-      }, Math.min(config.maxResultsPerQuery, 20)) as RawSerpItem[];
-
-      // Validate extraction quality
-      const quality = validateExtraction(rawResults);
-      logger.info("extraction quality", {
+      logger.info("Google API search successful", {
         engine: "google",
         query: query.query,
-        ...quality
+        resultCount: rawResults.length
       });
 
-      if (quality.confidence < 0.3) {
-        logger.warn("low extraction confidence", {
-          engine: "google",
-          confidence: quality.confidence,
-          warnings: quality.warnings
-        });
-      }
-
-      return normalizeResults({
+      const normalized = normalizeResults({
         engine: "google",
         query,
+        rawResults,
         collectedAt,
-        rawHtmlPath: rawHtmlFile,
-        items: rawResults
+        config,
+        rawHtmlPath: null // API-based, no HTML
       });
+
+      return normalized;
     } catch (error) {
-      logger.error("google search failed", { 
-        query: query.query, 
-        error: (error as Error).message 
+      logger.error("Google API search failed", {
+        engine: "google",
+        query: query.query,
+        error: (error as Error).message
       });
-      
-      // Capture debug info
-      try {
-        const debugPath = await captureDebugSnapshot(
-          page,
-          "google",
-          config.runId,
-          query.id,
-          "search_failed"
-        );
-        logger.info("debug snapshot saved", { path: debugPath });
-      } catch (debugError) {
-        logger.warn("failed to capture debug snapshot", { error: debugError });
-      }
-      
-      throw error;
-    } finally {
-      try {
-        await page.close();
-      } catch (closeError) {
-        // Page already closed, ignore
-      }
+      return [];
     }
   }
 
-  return { search };
+  async function close() {
+    // No browser to close for API client
+    logger.info("Google API client closed");
+  }
+
+  return { search, close };
 }

@@ -1,9 +1,7 @@
-import { Browser } from "puppeteer";
 import { BenchmarkQuery, SearchResult } from "@truthlayer/schema";
 import { CollectorConfig } from "../lib/config";
 import { Logger } from "../lib/logger";
-import { ensureRequestPermitted } from "../lib/compliance";
-import { ensureBrowser, randomUserAgent, takeHtmlSnapshot, waitForResults, validateExtraction, detectBotBlock, captureDebugSnapshot } from "./utils";
+import { loadEnv } from "@truthlayer/config";
 import { normalizeResults, RawSerpItem } from "./normalize";
 import pRetry from "p-retry";
 
@@ -12,162 +10,117 @@ interface CreateBraveClientOptions {
   logger: Logger;
 }
 
+interface BraveWebResult {
+  title: string;
+  url: string;
+  description?: string;
+  language?: string;
+}
+
+interface BraveSearchResponse {
+  web?: {
+    results: BraveWebResult[];
+  };
+  error?: {
+    code: string;
+    message: string;
+  };
+}
+
 export function createBraveClient({ config, logger }: CreateBraveClientOptions) {
-  let browser: Browser | null = null;
+  const env = loadEnv();
+  const apiKey = env.BRAVE_API_KEY;
 
   async function search(query: BenchmarkQuery): Promise<SearchResult[]> {
-    const browserInstance = browser ?? (browser = await ensureBrowser(config));
-    const page = await browserInstance.newPage();
+    // If API key not configured, log warning and return empty
+    if (!apiKey) {
+      logger.warn("Brave API key not configured", {
+        engine: "brave",
+        query: query.query,
+        hint: "Set BRAVE_API_KEY in .env"
+      });
+      return [];
+    }
 
     try {
-      await page.setUserAgent(randomUserAgent(config));
-      const targetUrl = `https://search.brave.com/search?q=${encodeURIComponent(query.query)}`;
-      await ensureRequestPermitted(targetUrl, config, logger);
+      const maxResults = Math.min(config.maxResultsPerQuery, 20); // Brave API max is 20
+      const apiUrl = `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query.query)}&count=${maxResults}`;
 
-      await pRetry(
+      const response = await pRetry(
         async () => {
-          await page.goto(targetUrl, { waitUntil: "domcontentloaded", timeout: 30_000 });
+          const res = await fetch(apiUrl, {
+            headers: {
+              "Accept": "application/json",
+              "Accept-Encoding": "gzip",
+              "X-Subscription-Token": apiKey
+            }
+          });
+          
+          if (!res.ok) {
+            const errorText = await res.text();
+            throw new Error(`Brave API error: ${res.status} ${errorText}`);
+          }
+          return res.json() as Promise<BraveSearchResponse>;
         },
         { retries: 2, factor: 2 }
       );
 
-      await new Promise(resolve => setTimeout(resolve, config.engines.brave.delayMs));
-
-      // Check for bot detection
-      const isBlocked = await detectBotBlock(page);
-      if (isBlocked) {
-        logger.warn("bot detection triggered", { 
+      if (response.error) {
+        logger.error("Brave API returned error", {
           engine: "brave",
-          query: query.query 
+          query: query.query,
+          error: response.error.message
         });
-        await captureDebugSnapshot(page, "brave", config.runId, query.id, "bot_detected");
         return [];
       }
 
-      // Wait for results to load
-      const foundSelector = await waitForResults(page, [
-        '.card[data-type]',
-        '.snippet.fdb',
-        'div[data-pos]'
-      ], 10000);
-
-      if (!foundSelector) {
-        logger.warn("brave no results found", { query: query.query });
+      if (!response.web || !response.web.results || response.web.results.length === 0) {
+        logger.warn("Brave API returned no results", {
+          engine: "brave",
+          query: query.query
+        });
+        return [];
       }
 
       const collectedAt = new Date();
-      const htmlSnapshot = await page.content();
-      const { htmlPath } = await takeHtmlSnapshot({
-        engine: "brave",
-        runId: config.runId,
-        queryId: query.id,
-        html: htmlSnapshot
-      });
+      const rawResults: RawSerpItem[] = response.web.results.map((result, index) => ({
+        rank: index + 1,
+        title: result.title || "",
+        snippet: result.description || "",
+        url: result.url || "",
+        confidence: 1.0
+      }));
 
-      const rawResults = await page.evaluate((max: number) => {
-        // Multiple fallback selectors for Brave results
-        const selectorStrategies = [
-          '.card[data-type="web"]',
-          '.card[data-type="news"]', 
-          '.card.svelte-n0tn90',
-          '.snippet.fdb',  // Legacy fallback
-          'div[data-pos]'
-        ];
-        
-        let els: Element[] = [];
-        for (const selector of selectorStrategies) {
-          els = Array.from(document.querySelectorAll(selector));
-          if (els.length > 0) break;
-        }
-        
-        const items = els.slice(0, max).map((el, i) => {
-          // Multiple extraction strategies
-          const linkEl = el.querySelector('a[href]') as HTMLAnchorElement | null;
-          const titleEl = linkEl?.querySelector('h2, .title, .result-header') || 
-                          el.querySelector('h2, .title');
-          const snippetEl = el.querySelector('.snippet-description, .card-body, .snippet-content');
-          
-          let url = linkEl?.href ?? "";
-          
-          // Brave redirect unwrapping + validation
-          try {
-            if (url.includes("search.brave.com/redirect") || url.includes("brave.com/link")) {
-              const u = new URL(url);
-              const target = u.searchParams.get("url") || u.searchParams.get("u");
-              if (target) url = decodeURIComponent(target);
-            }
-            if (url && !url.startsWith('http://') && !url.startsWith('https://')) {
-              url = "";
-            }
-          } catch {
-            url = "";
-          }
-          
-          return {
-            rank: i + 1,
-            title: (titleEl?.textContent || "").trim(),
-            snippet: (snippetEl?.textContent || "").trim(),
-            url,
-            confidence: url && titleEl ? 1.0 : 0.5  // Quality indicator
-          };
-        });
-        
-        return items;
-      }, Math.min(config.maxResultsPerQuery, 20)) as RawSerpItem[];
-
-      // Validate extraction quality
-      const quality = validateExtraction(rawResults);
-      logger.info("extraction quality", {
+      logger.info("Brave API search successful", {
         engine: "brave",
         query: query.query,
-        ...quality
+        resultCount: rawResults.length
       });
 
-      if (quality.confidence < 0.3) {
-        logger.warn("low extraction confidence", {
-          engine: "brave",
-          confidence: quality.confidence,
-          warnings: quality.warnings
-        });
-      }
-
-      return normalizeResults({
+      const normalized = normalizeResults({
         engine: "brave",
         query,
+        rawResults,
         collectedAt,
-        rawHtmlPath: htmlPath,
-        items: rawResults
+        config,
+        rawHtmlPath: null // API-based, no HTML
       });
+
+      return normalized;
     } catch (error) {
-      logger.error("brave search failed", { 
-        query: query.query, 
-        error: (error as Error).message 
+      logger.error("Brave API search failed", {
+        engine: "brave",
+        query: query.query,
+        error: (error as Error).message
       });
-      
-      // Capture debug info
-      try {
-        const debugPath = await captureDebugSnapshot(
-          page,
-          "brave",
-          config.runId,
-          query.id,
-          "search_failed"
-        );
-        logger.info("debug snapshot saved", { path: debugPath });
-      } catch (debugError) {
-        logger.warn("failed to capture debug snapshot", { error: debugError });
-      }
-      
-      throw error;
-    } finally {
-      try {
-        await page.close();
-      } catch (closeError) {
-        // Page already closed, ignore
-      }
+      return [];
     }
   }
 
-  return { search };
-}
+  async function close() {
+    // No browser to close for API client
+    logger.info("Brave API client closed");
+  }
 
+  return { search, close };
+}
