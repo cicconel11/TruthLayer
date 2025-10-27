@@ -28,26 +28,35 @@ TruthLayer captures and analyzes search engine and AI-generated results to expos
 ## ✅ What's Working
 
 ### **Fully Operational**
-- ✅ **Collector Service** - Multi-engine scraping (Google, Bing, Perplexity, Brave)
+- ✅ **Collector Service** - Multi-engine scraping with 7-day cache and parallel execution
+- ✅ **Perplexity Scraper** - Working reliably (8+ results per query)
 - ✅ **Storage Layer** - Postgres/DuckDB support with automatic table creation
-- ✅ **Annotation Pipeline** - Mock annotations working (OpenAI integration scaffolded)
+- ✅ **Annotation Pipeline** - OpenAI/Anthropic LLM integration with heuristic fallbacks
 - ✅ **Metrics Engine** - Computing domain diversity, engine overlap, factual alignment
-- ✅ **Dashboard** - Next.js app with Chart.js visualizations
+- ✅ **Dashboard** - Next.js app with trend indicators and real-time updates
 - ✅ **Scheduler** - Pipeline orchestration (collector → annotation → metrics)
 - ✅ **Data Exports** - CSV/Parquet exports with versioned metadata
+- ✅ **Cache Layer** - File-based caching with configurable TTL (default 7 days)
 
-### **Partially Complete**
-- 🟡 **OpenAI Integration** - Scaffolded but needs API key
-- 🟡 **Claude Bridge** - Python integration exists but untested
+### **Known Limitations**
+- ⚠️ **Google/Bing/Brave Scrapers** - Blocked by bot detection (CAPTCHAs)
+  - Perplexity works reliably as primary data source
+  - Working on API integration alternatives
 - 🟡 **Manual Audit Tool** - Script exists but needs validation
-- 🟡 **Monitoring Dashboard** - Page exists but needs real-time data
+- 🟡 **Monitoring Dashboard** - Page exists but needs live metrics feed
 
 ---
 
 ## 🚀 Quick Start
 
+**New to TruthLayer?** Start here:
+
+📖 **[QUICKSTART.md](./QUICKSTART.md)** - Get running in 5 minutes  
+📖 **[SETUP.md](./SETUP.md)** - Detailed installation guide  
+📖 **[CHECKLIST.md](./CHECKLIST.md)** - Verify your setup  
+
 ### Prerequisites
-- **Node.js** v20+ 
+- **Node.js** v18+ 
 - **pnpm** v9.12.0+
 - **PostgreSQL** 16+ (or use DuckDB)
 - **Git**
