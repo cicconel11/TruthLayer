@@ -1,4 +1,4 @@
-# TruthLayer Setup Checklist ✅
+# TruthLayer Setup Checklist 
 
 Use this checklist to verify your TruthLayer installation is working correctly.
 
@@ -38,7 +38,7 @@ Use this checklist to verify your TruthLayer installation is working correctly.
   ```bash
   pnpm install
   ```
-  ✅ Should complete without errors
+   Should complete without errors
 
 - [ ] **3. Set up PostgreSQL database**
   ```bash
@@ -48,20 +48,20 @@ Use this checklist to verify your TruthLayer installation is working correctly.
   # Create database
   createdb truthlayer
   ```
-  ✅ Database should be created successfully
+   Database should be created successfully
 
 - [ ] **4. Configure environment**
   ```bash
   cp .env.example .env
   # Edit .env and update STORAGE_URL with your username
   ```
-  ✅ `.env` file should exist with your PostgreSQL username
+   `.env` file should exist with your PostgreSQL username
 
 - [ ] **5. Build packages**
   ```bash
   pnpm --filter "./**" build
   ```
-  ✅ All packages should build successfully
+   All packages should build successfully
 
 ---
 
@@ -73,7 +73,7 @@ Use this checklist to verify your TruthLayer installation is working correctly.
   ```bash
   psql truthlayer -c "SELECT 1;"
   ```
-  ✅ Should return:
+   Should return:
   ```
    ?column? 
   ----------
@@ -86,13 +86,13 @@ Use this checklist to verify your TruthLayer installation is working correctly.
   ```bash
   cat data/serp/11111111-1111-1111-1111-111111111111-ai-20.json
   ```
-  ✅ Should show JSON with search results
+   Should show JSON with search results
 
 - [ ] **Check database tables**
   ```bash
   psql truthlayer -c "\dt"
   ```
-  ✅ Should show tables: `search_results`, `annotations`, `metric_records`, etc.
+   Should show tables: `search_results`, `annotations`, `metric_records`, etc.
   (If empty, tables will be created on first pipeline run)
 
 ### Test 3: Dashboard
@@ -101,10 +101,10 @@ Use this checklist to verify your TruthLayer installation is working correctly.
   ```bash
   pnpm --filter @truthlayer/dashboard dev
   ```
-  ✅ Should start without errors on http://localhost:3000
+   Should start without errors on http://localhost:3000
 
 - [ ] **Open browser to http://localhost:3000**
-  ✅ Should see:
+   Should see:
   - Metrics cards with numbers
   - Charts displaying data
   - No console errors
@@ -116,10 +116,10 @@ Use this checklist to verify your TruthLayer installation is working correctly.
   node -e "import('./apps/collector/dist/index.js').then(async m => { 
     const app = await m.createCollectorApp(); 
     await app.run(); 
-    console.log('✅ Collection completed');
+    console.log(' Collection completed');
   })"
   ```
-  ✅ Should complete and create files in `data/serp/`
+   Should complete and create files in `data/serp/`
   
   **Note:** Currently only Perplexity works (Google/Bing/Brave blocked by bot detection)
 
@@ -137,7 +137,7 @@ Use this checklist to verify your TruthLayer installation is working correctly.
     await app.run(); 
   })"
   ```
-  ✅ Should annotate results and store in database
+   Should annotate results and store in database
 
 ### Test 6: Metrics
 
@@ -148,34 +148,34 @@ Use this checklist to verify your TruthLayer installation is working correctly.
     await app.run(); 
   })"
   ```
-  ✅ Should calculate and export metrics
+   Should calculate and export metrics
 
 ---
 
 ## Common Issues & Solutions
 
-### ❌ `FATAL: database "truthlayer" does not exist`
+###  `FATAL: database "truthlayer" does not exist`
 ```bash
 createdb truthlayer
 ```
 
-### ❌ `FATAL: role "postgres" does not exist`
+###  `FATAL: role "postgres" does not exist`
 Update `STORAGE_URL` in `.env`:
 ```bash
 STORAGE_URL=postgres://YOUR_ACTUAL_USERNAME@localhost:5432/truthlayer
 ```
 
-### ❌ `pnpm: command not found`
+###  `pnpm: command not found`
 ```bash
 npm install -g pnpm
 ```
 
-### ❌ Port 3000 already in use
+###  Port 3000 already in use
 ```bash
 lsof -ti:3000 | xargs kill -9
 ```
 
-### ❌ Build errors
+###  Build errors
 ```bash
 rm -rf node_modules
 pnpm install
@@ -184,16 +184,16 @@ pnpm --filter "./**" build
 
 ---
 
-## Success Criteria ✅
+## Success Criteria 
 
 Your setup is complete when:
 
-✅ Dashboard loads at http://localhost:3000  
-✅ No errors in browser console  
-✅ Metrics cards show data  
-✅ Charts render properly  
-✅ Database connection works  
-✅ All builds complete successfully  
+ Dashboard loads at http://localhost:3000  
+ No errors in browser console  
+ Metrics cards show data  
+ Charts render properly  
+ Database connection works  
+ All builds complete successfully  
 
 ---
 
@@ -224,5 +224,5 @@ Once everything is working:
 
 **Need help?** Check `SETUP.md` for detailed troubleshooting or create a GitHub issue.
 
-**Happy coding! 🚀**
+**Happy coding! **
 

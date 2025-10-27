@@ -135,7 +135,7 @@ Run the collector to scrape search engines:
 node -e "import('./apps/collector/dist/index.js').then(async m => { 
   const app = await m.createCollectorApp(); 
   await app.run(); 
-  console.log('✅ Collection completed');
+  console.log(' Collection completed');
 })"
 ```
 
@@ -337,7 +337,7 @@ For full functionality, you'll need:
 ## Known Limitations
 
 - **Google, Bing, Brave:** Currently blocked by bot detection/CAPTCHAs
-- **Perplexity:** Works reliably ✅
+- **Perplexity:** Works reliably 
 - **API Costs:** Annotation pipeline requires OpenAI/Anthropic credits (~$0.01-0.10 per run)
 - **Collection Time:** Initial collection takes 10-60 seconds per query (cached runs are instant)
 
@@ -361,5 +361,5 @@ After setup:
 
 ---
 
-**Ready to explore search and AI transparency! 🚀**
+**Ready to explore search and AI transparency! **
 
