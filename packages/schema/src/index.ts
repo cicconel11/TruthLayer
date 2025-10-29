@@ -6,3 +6,4 @@ export * from "./annotation";
 export * from "./dataset-version";
 export * from "./pipeline-run";
 export * from "./audit-sample";
+export * from "./queryInsight";

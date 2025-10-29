@@ -580,12 +580,12 @@ export class DuckDBStorageClient implements StorageClient {
         params
       );
 
-          return rows.map((row) =>
-            AnnotatedResultViewSchema.parse({
-              runId: row.run_id ?? `${row.query_id}-${String(row.collected_at)}`,
-              batchId: row.batch_id ?? undefined,
-              annotationId: row.annotation_id,
-              queryId: row.query_id,
+      return rows.map((row) =>
+        AnnotatedResultViewSchema.parse({
+          runId: row.run_id ?? `${row.query_id}-${String(row.collected_at)}`,
+          batchId: row.batch_id ?? undefined,
+          annotationId: row.annotation_id,
+          queryId: row.query_id,
           engine: row.engine,
           normalizedUrl: row.normalized_url,
           domain: row.domain,
