@@ -1,0 +1,34 @@
+# Node / pnpm artifacts
+node_modules
+pnpm-debug.log*
+npm-debug.log*
+yarn-error.log*
+
+# Build outputs (we rebuild inside the image)
+dist
+.next
+out
+coverage
+
+# VCS
+.git
+.gitignore
+
+# OS/editor
+.DS_Store
+*.swp
+
+# Local data and caches
+apps/**/data
+apps/**/.next
+apps/**/dist
+apps/**/.turbo
+packages/**/dist
+
+# Supabase local
+supabase/.temp
+supabase/.branches
+
+# Large local datasets
+/data
+external/
