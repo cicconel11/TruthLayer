@@ -17,7 +17,11 @@ export const SearchResultSchema = z.object({
   hash: z.string().length(64),
   rawHtmlPath: z.string(),
   createdAt: z.coerce.date(),
-  updatedAt: z.coerce.date()
+  updatedAt: z.coerce.date(),
+  source: z.string().nullable().optional(),
+  extractionConfidence: z.number().min(0).max(1).nullable().optional(),
+  extractionWarnings: z.string().nullable().optional(),
+  metadata: z.string().nullable().optional()
 });
 
 export type SearchResult = z.infer<typeof SearchResultSchema>;

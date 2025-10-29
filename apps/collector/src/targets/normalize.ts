@@ -7,6 +7,8 @@ export interface RawSerpItem {
   snippet?: string;
   url: string;
   confidence?: number;  // Quality indicator (0-1)
+  source?: string;  // Collection source: 'api', 'html', etc.
+  metadata?: Record<string, unknown>;  // Additional metadata (summaries, citations, etc.)
 }
 
 export function normalizeResults(params: {
@@ -55,8 +57,12 @@ export function normalizeResults(params: {
         hash,
         rawHtmlPath,
         createdAt: nowIso,
-        updatedAt: nowIso
-      } satisfies SearchResult;
+        updatedAt: nowIso,
+        source: item.source,
+        extractionConfidence: item.confidence ?? null,
+        extractionWarnings: item.metadata?.warnings ? JSON.stringify(item.metadata.warnings) : null,
+        metadata: item.metadata ? JSON.stringify(item.metadata) : null
+      } as any;
     });
 }
 

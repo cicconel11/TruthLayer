@@ -91,7 +91,8 @@ export function createDuckDuckGoClient({ config, logger, runId }: CreateDuckDuck
           rank: 1,
           title: data.Heading || data.Abstract.substring(0, 100),
           snippet: data.AbstractText || data.Abstract,
-          url: data.AbstractURL
+          url: data.AbstractURL,
+          source: "api"
         });
       }
 
@@ -104,7 +105,8 @@ export function createDuckDuckGoClient({ config, logger, runId }: CreateDuckDuck
               rank: rawResults.length + 1,
               title: topic.Text.split(" - ")[0].trim(),
               snippet: topic.Text,
-              url: topic.FirstURL
+              url: topic.FirstURL,
+              source: "api"
             });
           }
           // Nested topics array
@@ -115,7 +117,8 @@ export function createDuckDuckGoClient({ config, logger, runId }: CreateDuckDuck
                   rank: rawResults.length + 1,
                   title: nestedTopic.Text.split(" - ")[0].trim(),
                   snippet: nestedTopic.Text,
-                  url: nestedTopic.FirstURL
+                  url: nestedTopic.FirstURL,
+                  source: "api"
                 });
               }
             }
@@ -195,7 +198,8 @@ export function createDuckDuckGoClient({ config, logger, runId }: CreateDuckDuck
             rank: index + 1,
             title,
             snippet,
-            url
+            url,
+            source: "html"
           });
         }
       });

@@ -61,6 +61,57 @@ export function createPerplexityClient({ config, logger, runId }: CreatePerplexi
         html: htmlSnapshot
       });
 
+      // Extract AI summary and citations
+      const summaryData = await page.evaluate(() => {
+        // Try multiple selectors for Perplexity's AI-generated answer
+        const summarySelectors = [
+          '[data-testid="answer"]',
+          '.prose',
+          'article > div > p',
+          'main > div > div > p'
+        ];
+        
+        let summary: string | null = null;
+        for (const selector of summarySelectors) {
+          const element = document.querySelector(selector);
+          if (element?.textContent && element.textContent.length > 50) {
+            summary = element.textContent.trim();
+            break;
+          }
+        }
+
+        // Extract citation links
+        const citationSelectors = [
+          '[data-testid="citation"]',
+          '.citation a',
+          'sup a',
+          'a[href*="citation"]'
+        ];
+        
+        const citationUrls = new Set<string>();
+        for (const selector of citationSelectors) {
+          const elements = document.querySelectorAll(selector);
+          elements.forEach((el) => {
+            const href = (el as HTMLAnchorElement).href;
+            if (href && !href.includes('perplexity.ai')) {
+              citationUrls.add(href);
+            }
+          });
+        }
+
+        return {
+          summary,
+          citations: Array.from(citationUrls)
+        };
+      });
+
+      logger.info("perplexity summary extraction", {
+        query: query.query,
+        hasSummary: !!summaryData.summary,
+        summaryLength: summaryData.summary?.length ?? 0,
+        citationsCount: summaryData.citations.length
+      });
+
       // Perplexity is a SPA; use multi-strategy extraction
       const rawResults = await page.evaluate((max: number) => {
         const selectorStrategies = [
@@ -118,12 +169,27 @@ export function createPerplexityClient({ config, logger, runId }: CreatePerplexi
         });
       }
 
+      // Add summary and citations metadata to results
+      const enhancedResults = rawResults.map((item, idx) => ({
+        ...item,
+        source: "html",
+        metadata: idx === 0 ? {
+          summary: summaryData.summary,
+          citations: summaryData.citations,
+          extractionConfidence: quality.confidence,
+          extractionWarnings: quality.warnings
+        } : {
+          extractionConfidence: quality.confidence,
+          extractionWarnings: quality.warnings
+        }
+      }));
+
       return normalizeResults({
         engine: "perplexity",
         query,
         collectedAt,
         rawHtmlPath: htmlPath,
-        items: rawResults,
+        items: enhancedResults,
         crawlRunId: runId
       });
     } catch (error) {

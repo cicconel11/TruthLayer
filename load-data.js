@@ -1,5 +1,6 @@
 import { createStorageClient } from './apps/storage/dist/index.js';
 import fs from 'fs/promises';
+import { randomUUID } from 'crypto';
 
 async function loadData() {
   const storage = createStorageClient();
@@ -27,7 +28,7 @@ async function loadData() {
         domain: r.domain,
         timestamp: new Date(r.timestamp),
         hash: r.hash,
-        rawHtmlPath: r.rawHtmlPath,
+        rawHtmlPath: r.rawHtmlPath ?? '',
         createdAt: new Date(r.createdAt),
         updatedAt: new Date(r.updatedAt)
       }));
@@ -39,7 +40,7 @@ async function loadData() {
       // Create mock annotations
       console.log('Creating mock annotations...');
       const mockAnnotations = serpData.map((result, index) => ({
-        id: `ann-${result.id}`,
+        id: randomUUID(),
         searchResultId: result.id,
         queryId: result.queryId,
         engine: result.engine,
@@ -58,12 +59,12 @@ async function loadData() {
       
       // Create mock metrics
       console.log('Creating mock metrics...');
-      const runId = 'mock-run-1';
+      const runId = randomUUID();
       const queryId = '11111111-1111-1111-1111-111111111111';
       
       const mockMetrics = [
         {
-          id: 'metric-1',
+          id: randomUUID(),
           crawlRunId: runId,
           queryId: queryId,
           engine: null,
@@ -76,7 +77,7 @@ async function loadData() {
           createdAt: new Date()
         },
         {
-          id: 'metric-2',
+          id: randomUUID(),
           crawlRunId: runId,
           queryId: queryId,
           engine: null,
@@ -89,7 +90,7 @@ async function loadData() {
           createdAt: new Date()
         },
         {
-          id: 'metric-3',
+          id: randomUUID(),
           crawlRunId: runId,
           queryId: queryId,
           engine: null,

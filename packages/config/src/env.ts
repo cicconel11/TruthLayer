@@ -46,7 +46,9 @@ const EnvSchema = z.object({
   SCHEDULER_MANUAL_AUDIT_PERCENT: z.coerce.number().int().min(1).max(100).default(5),
   METRICS_EXPORT_DIR: z.string().min(1).default("data/metrics"),
   METRICS_WINDOW_SIZE: z.coerce.number().int().min(1).max(90).optional(),
-  LOG_LEVEL: z.string().optional()
+  LOG_LEVEL: z.string().optional(),
+  BRAVE_RATE_LIMIT_RPS: z.coerce.number().min(0.1).max(10).default(1),
+  PERPLEXITY_RATE_LIMIT_RPS: z.coerce.number().min(0.1).max(10).default(2)
 });
 
 export type EnvConfig = z.infer<typeof EnvSchema>;

@@ -4,6 +4,7 @@ import { Logger } from "../lib/logger";
 import { cachedAndRetryableFetch } from "../lib/retry";
 import { takeHtmlSnapshot } from "./utils";
 import { normalizeResults, RawSerpItem } from "./normalize";
+import { RateLimiter } from "../lib/rate-limiter";
 
 /**
  * Brave Search API client
@@ -29,7 +30,12 @@ interface BraveApiResponse {
 }
 
 export function createBraveClient({ config, logger, runId }: CreateBraveClientOptions) {
+  const rateLimiter = new RateLimiter({
+    maxRequestsPerSecond: config.rateLimits.brave
+  });
+
   async function search(query: BenchmarkQuery): Promise<SearchResult[]> {
+    const startTime = Date.now();
     if (!config.braveApiKey) {
       logger.error("brave api key missing", { 
         query: query.query,
@@ -51,6 +57,9 @@ export function createBraveClient({ config, logger, runId }: CreateBraveClientOp
         query: query.query, 
         count: config.maxResultsPerQuery 
       });
+
+      // Wait for rate limit token
+      await rateLimiter.waitForToken();
 
       const response = await cachedAndRetryableFetch(
         url,
@@ -99,6 +108,8 @@ export function createBraveClient({ config, logger, runId }: CreateBraveClientOp
 
       const data: BraveApiResponse = await response.json();
       const collectedAt = new Date();
+      const durationMs = Date.now() - startTime;
+      const stats = rateLimiter.getStats();
 
       // Save API response as JSON snapshot
       const { htmlPath } = await takeHtmlSnapshot({
@@ -116,13 +127,20 @@ export function createBraveClient({ config, logger, runId }: CreateBraveClientOp
           rank: index + 1,
           title: (item.title || "").trim(),
           snippet: (item.description || "").trim(),
-          url: item.url || ""
+          url: item.url || "",
+          source: "api",
+          metadata: {
+            rateLimitHits: stats.rateLimitHits,
+            durationMs
+          }
         }));
 
       logger.info("brave api results", {
         query: query.query,
         resultCount: rawResults.length,
-        apiResponseSize: webResults.length
+        apiResponseSize: webResults.length,
+        durationMs,
+        rateLimitHits: stats.rateLimitHits
       });
 
       if (rawResults.length === 0) {

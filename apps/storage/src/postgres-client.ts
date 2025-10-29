@@ -70,6 +70,23 @@ function buildTimestampSlug(date: Date): string {
   return date.toISOString().replace(/[-:.TZ]/g, "");
 }
 
+/**
+ * Deduplicates search results by (query_id, engine, url) to prevent
+ * "ON CONFLICT DO UPDATE command cannot affect row a second time" errors.
+ * Keeps the last occurrence of each duplicate.
+ * 
+ * @param results - Array of search result records
+ * @returns Deduplicated array with unique (query_id, engine, url) tuples
+ */
+function deduplicateSearchResults(results: SearchResultInput[]): SearchResultInput[] {
+  const map = new Map<string, SearchResultInput>();
+  for (const r of results) {
+    const key = `${r.queryId}-${r.engine}-${r.url}`;
+    map.set(key, r);
+  }
+  return Array.from(map.values());
+}
+
 function normalizeRow(row: Record<string, unknown>): Record<string, unknown> {
   const normalized: Record<string, unknown> = {};
 
@@ -217,6 +234,7 @@ export class PostgresStorageClient implements StorageClient {
   private crawlRunsTableEnsured = false;
   private datasetVersionsTableEnsured = false;
   private auditSamplesTableEnsured = false;
+  private viewpointsTableEnsured = false;
 
   constructor(connectionString: string) {
     this.pool = new Pool({ connectionString });
@@ -304,6 +322,13 @@ export class PostgresStorageClient implements StorageClient {
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
     `);
+    
+    // Create unique index on (query_id, engine, url) to prevent logical duplicates
+    await this.pool.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS search_results_unique_idx
+        ON search_results (query_id, engine, url)
+    `);
+    
     this.searchResultsTableEnsured = true;
   }
 
@@ -342,6 +367,27 @@ export class PostgresStorageClient implements StorageClient {
       )
     `);
     this.datasetVersionsTableEnsured = true;
+  }
+
+  private async ensureViewpointsTable() {
+    if (this.viewpointsTableEnsured) return;
+    await this.pool.query(`
+      CREATE TABLE IF NOT EXISTS viewpoints (
+        id UUID PRIMARY KEY,
+        query_id UUID NOT NULL,
+        crawl_run_id UUID,
+        engine TEXT NOT NULL,
+        num_results INTEGER NOT NULL DEFAULT 0,
+        summary TEXT,
+        citations_count INTEGER DEFAULT 0,
+        overlap_hash TEXT,
+        collected_at TIMESTAMPTZ NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE(query_id, crawl_run_id, engine)
+      )
+    `);
+    this.viewpointsTableEnsured = true;
   }
 
   private async ensureAuditSamplesTable() {
@@ -558,6 +604,21 @@ export class PostgresStorageClient implements StorageClient {
     if (!records.length) return;
     await this.ensureSearchResultsTable();
 
+    console.info(`[Storage] insertSearchResults called with ${records.length} records`);
+
+    // Deduplicate by (query_id, engine, url) to prevent ON CONFLICT errors
+    const deduped = deduplicateSearchResults(records);
+    
+    console.info(
+      `[Storage] After dedup: ${records.length} → ${deduped.length} (removed ${records.length - deduped.length})`
+    );
+    
+    // Log a sample of what we're about to insert
+    if (deduped.length > 0) {
+      const sample = deduped.slice(0, 3).map(r => `${r.queryId.substring(0,8)}-${r.engine}-${r.url.substring(0,30)}`);
+      console.info(`[Storage] Sample records: ${sample.join(', ')}`);
+    }
+
     const columns = [
       "id",
       "crawl_run_id",
@@ -579,7 +640,7 @@ export class PostgresStorageClient implements StorageClient {
     const params: unknown[] = [];
     const placeholders: string[] = [];
 
-    records.forEach((record, index) => {
+    deduped.forEach((record, index) => {
       const offset = index * columns.length;
       placeholders.push(`(${columns.map((_, columnIndex) => `$${offset + columnIndex + 1}`).join(", ")})`);
       params.push(
@@ -601,35 +662,53 @@ export class PostgresStorageClient implements StorageClient {
       );
     });
 
-    await this.pool.query(
-      `
-        INSERT INTO search_results (
-          ${columns.join(", ")}
-        ) VALUES ${placeholders.join(", ")}
-        ON CONFLICT (id)
-        DO UPDATE SET
+    console.info(`[Storage] Executing INSERT with ${deduped.length} rows, ${params.length} params`);
+    
+    try {
+      await this.pool.query(
+        `
+          INSERT INTO search_results (
+            ${columns.join(", ")}
+          ) VALUES ${placeholders.join(", ")}
+          ON CONFLICT (query_id, engine, url)
+          DO UPDATE SET
+            id = EXCLUDED.id,
           crawl_run_id = EXCLUDED.crawl_run_id,
-          query_id = EXCLUDED.query_id,
-          engine = EXCLUDED.engine,
           rank = EXCLUDED.rank,
           title = EXCLUDED.title,
           snippet = EXCLUDED.snippet,
-          url = EXCLUDED.url,
           normalized_url = EXCLUDED.normalized_url,
           domain = EXCLUDED.domain,
           timestamp = EXCLUDED.timestamp,
           hash = EXCLUDED.hash,
           raw_html_path = EXCLUDED.raw_html_path,
-          created_at = EXCLUDED.created_at,
           updated_at = EXCLUDED.updated_at
-      `,
-      params
-    );
+        `,
+        params
+      );
+      console.info(`[Storage] INSERT completed successfully`);
+    } catch (error) {
+      console.error(`[Storage] INSERT failed:`, error);
+      throw error;
+    }
   }
 
   async recordCrawlRuns(records: CrawlRunRecordInput[]): Promise<void> {
     if (!records.length) return;
     await this.ensureCrawlRunsTable();
+
+    console.info(`[Storage] recordCrawlRuns called with ${records.length} records`);
+    
+    // Check for duplicates by ID
+    const idMap = new Map<string, number>();
+    records.forEach(r => {
+      idMap.set(r.id, (idMap.get(r.id) || 0) + 1);
+    });
+    const dupIds = Array.from(idMap.entries()).filter(([k,v]) => v > 1);
+    if (dupIds.length > 0) {
+      console.warn(`[Storage] recordCrawlRuns has ${dupIds.length} duplicate IDs!`);
+      dupIds.slice(0, 3).forEach(([id, cnt]) => console.warn(`  ${id} → ${cnt} times`));
+    }
 
     const columns = [
       "id",
@@ -778,7 +857,7 @@ export class PostgresStorageClient implements StorageClient {
     );
   }
 
-  async fetchAlternativeSources(options: FetchAlternativeSourcesOptions): Promise<AnnotatedResultView[]> {
+  async fetchAlternativeSources(options: import("./types").FetchAlternativeSourcesOptions): Promise<AnnotatedResultView[]> {
     const conditions: string[] = [];
     const params: unknown[] = [];
 
@@ -1652,6 +1731,107 @@ export class PostgresStorageClient implements StorageClient {
       completedAt: row.completed_at,
       error: row.error,
       metadata: row.metadata ?? {},
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    }));
+  }
+
+  async upsertViewpoints(records: import("./types").ViewpointRecordInput[]): Promise<void> {
+    if (records.length === 0) return;
+    await this.ensureViewpointsTable();
+
+    const values = records.map((r) => [
+      r.id,
+      r.queryId,
+      r.crawlRunId,
+      r.engine,
+      r.numResults,
+      r.summary ?? null,
+      r.citationsCount,
+      r.overlapHash ?? null,
+      r.collectedAt.toISOString(),
+      r.createdAt.toISOString(),
+      r.updatedAt.toISOString()
+    ]);
+
+    const placeholders = values
+      .map((_, i) => {
+        const base = i * 11;
+        return `($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6}, $${base + 7}, $${base + 8}, $${base + 9}, $${base + 10}, $${base + 11})`;
+      })
+      .join(", ");
+
+    const flatValues = values.flat();
+
+    await this.pool.query(
+      `
+        INSERT INTO viewpoints (
+          id, query_id, crawl_run_id, engine, num_results, summary,
+          citations_count, overlap_hash, collected_at, created_at, updated_at
+        )
+        VALUES ${placeholders}
+        ON CONFLICT (query_id, crawl_run_id, engine)
+        DO UPDATE SET
+          num_results = EXCLUDED.num_results,
+          summary = EXCLUDED.summary,
+          citations_count = EXCLUDED.citations_count,
+          overlap_hash = EXCLUDED.overlap_hash,
+          collected_at = EXCLUDED.collected_at,
+          updated_at = EXCLUDED.updated_at
+      `,
+      flatValues
+    );
+  }
+
+  async fetchViewpointsByQuery(options: import("./types").FetchViewpointsByQueryOptions): Promise<import("./types").ViewpointRecordInput[]> {
+    await this.ensureViewpointsTable();
+
+    const conditions: string[] = ["query_id = $1"];
+    const params: any[] = [options.queryId];
+
+    if (options.runId) {
+      conditions.push("crawl_run_id = $2");
+      params.push(options.runId);
+    }
+
+    if (options.engines && options.engines.length > 0) {
+      const enginePlaceholders = options.engines.map((_, i) => `$${params.length + i + 1}`).join(", ");
+      conditions.push(`engine IN (${enginePlaceholders})`);
+      params.push(...options.engines);
+    }
+
+    const { rows } = await this.pool.query<{
+      id: string;
+      query_id: string;
+      crawl_run_id: string | null;
+      engine: string;
+      num_results: number;
+      summary: string | null;
+      citations_count: number;
+      overlap_hash: string | null;
+      collected_at: Date;
+      created_at: Date;
+      updated_at: Date;
+    }>(
+      `
+        SELECT *
+        FROM viewpoints
+        WHERE ${conditions.join(" AND ")}
+        ORDER BY engine, collected_at DESC
+      `,
+      params
+    );
+
+    return rows.map((row) => ({
+      id: row.id,
+      queryId: row.query_id,
+      crawlRunId: row.crawl_run_id,
+      engine: row.engine,
+      numResults: row.num_results,
+      summary: row.summary,
+      citationsCount: row.citations_count,
+      overlapHash: row.overlap_hash,
+      collectedAt: row.collected_at,
       createdAt: row.created_at,
       updatedAt: row.updated_at
     }));
