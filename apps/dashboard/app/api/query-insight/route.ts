@@ -14,8 +14,9 @@
  */
 
 import { NextResponse } from "next/server";
+export const dynamic = "force-dynamic";
 import { createStorageClient } from "@truthlayer/storage";
-import { QueryInsightResponse } from "@truthlayer/schema";
+import type { QueryInsightResponse } from "@truthlayer/schema";
 import { getLatestRunForQuery } from "../../../lib/getLatestRunForQuery";
 import path from "node:path";
 import { promises as fs } from "node:fs";
@@ -248,4 +249,3 @@ export async function GET(request: Request) {
   }
   // Note: Don't close storage - using singleton pattern for DuckDB
 }
-
