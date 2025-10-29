@@ -1,6 +1,7 @@
 import { BenchmarkQuery, SearchResult } from "@truthlayer/schema";
 import { CollectorConfig } from "../lib/config";
 import { Logger } from "../lib/logger";
+import { cachedAndRetryableFetch } from "../lib/retry";
 import { takeHtmlSnapshot } from "./utils";
 import { normalizeResults, RawSerpItem } from "./normalize";
 
@@ -51,14 +52,28 @@ export function createBraveClient({ config, logger, runId }: CreateBraveClientOp
         count: config.maxResultsPerQuery 
       });
 
-      const response = await fetch(url, {
-        method: "GET",
-        headers: {
-          "X-Subscription-Token": config.braveApiKey,
-          "Accept": "application/json",
-          "Accept-Encoding": "gzip"
+      const response = await cachedAndRetryableFetch(
+        url,
+        {
+          method: "GET",
+          headers: {
+            "X-Subscription-Token": config.braveApiKey,
+            "Accept": "application/json",
+            "Accept-Encoding": "gzip"
+          }
+        },
+        {
+          engine: "brave",
+          query: query.query,
+          logger
+        },
+        undefined,
+        {
+          cacheDir: "data/cache/http",
+          ttlMs: 24 * 60 * 60 * 1000,
+          enabled: true
         }
-      });
+      );
 
       if (!response.ok) {
         const errorBody = await response.text();

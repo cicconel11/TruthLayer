@@ -22,6 +22,18 @@ export interface FetchAnnotatedResultsOptions {
   until?: Date;
   queryIds?: string[];
   runIds?: string[];
+  domainTypes?: DomainType[];
+  factualConsistency?: FactualConsistency[];
+  engines?: string[];
+}
+
+export interface FetchAlternativeSourcesOptions {
+  domainTypes?: DomainType[];
+  factualConsistency?: FactualConsistency[];
+  excludeUrls?: string[];
+  queryKeywords?: string[];
+  limit?: number;
+  since?: Date;
 }
 
 export interface FetchPendingAnnotationsOptions {
@@ -178,6 +190,7 @@ export interface StorageClient {
   insertSearchResults(records: SearchResultInput[]): Promise<void>;
   recordCrawlRuns(records: CrawlRunRecordInput[]): Promise<void>;
   fetchAnnotatedResults(options: FetchAnnotatedResultsOptions): Promise<AnnotatedResultView[]>;
+  fetchAlternativeSources(options: FetchAlternativeSourcesOptions): Promise<AnnotatedResultView[]>;
   insertMetricRecords(records: MetricRecordInput[]): Promise<void>;
   fetchRecentMetricRecords(metricType: MetricType, limit: number): Promise<MetricRecordInput[]>;
   upsertAnnotationAggregates(records: AnnotationAggregateRecordInput[]): Promise<void>;

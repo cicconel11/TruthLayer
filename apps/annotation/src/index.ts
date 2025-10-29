@@ -18,6 +18,7 @@ const isDirectExecution = (() => {
 
 if (isDirectExecution) {
   main().catch((error) => {
+    // eslint-disable-next-line no-console
     console.error("Annotation service failed", error);
     process.exitCode = 1;
   });

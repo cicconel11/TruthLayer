@@ -778,6 +778,91 @@ export class PostgresStorageClient implements StorageClient {
     );
   }
 
+  async fetchAlternativeSources(options: FetchAlternativeSourcesOptions): Promise<AnnotatedResultView[]> {
+    const conditions: string[] = [];
+    const params: unknown[] = [];
+
+    // Filter by domain types
+    if (options.domainTypes && options.domainTypes.length) {
+      const placeholders = options.domainTypes.map((_, i) => `$${conditions.length + i + 1}`).join(", ");
+      conditions.push(`ann.domain_type IN (${placeholders})`);
+      params.push(...options.domainTypes);
+    }
+
+    // Filter by factual consistency
+    if (options.factualConsistency && options.factualConsistency.length) {
+      const placeholders = options.factualConsistency.map((_, i) => `$${conditions.length + i + 1}`).join(", ");
+      conditions.push(`ann.factual_consistency IN (${placeholders})`);
+      params.push(...options.factualConsistency);
+    }
+
+    // Exclude specific URLs
+    if (options.excludeUrls && options.excludeUrls.length) {
+      const placeholders = options.excludeUrls.map((_, i) => `$${conditions.length + i + 1}`).join(", ");
+      conditions.push(`sr.normalized_url NOT IN (${placeholders})`);
+      params.push(...options.excludeUrls);
+    }
+
+    // Filter by keywords in title/snippet
+    if (options.queryKeywords && options.queryKeywords.length) {
+      const keywordConditions = options.queryKeywords.map((keyword, i) => 
+        `(LOWER(sr.title) LIKE LOWER($${conditions.length + i + 1}) OR LOWER(sr.snippet) LIKE LOWER($${conditions.length + i + 2}))`
+      ).join(" OR ");
+      conditions.push(`(${keywordConditions})`);
+      params.push(...options.queryKeywords.flatMap(keyword => [`%${keyword}%`, `%${keyword}%`]));
+    }
+
+    // Filter by date
+    if (options.since) {
+      conditions.push(`sr.timestamp >= $${conditions.length + 1}`);
+      params.push(options.since.toISOString());
+    }
+
+    // Limit results
+    const limit = options.limit || 50;
+
+    const whereClause = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+
+    const query = `
+      SELECT
+        cr.id AS run_id,
+        cr.batch_id,
+        ann.id AS annotation_id,
+        sr.query_id,
+        sr.engine,
+        sr.normalized_url,
+        sr.domain,
+        sr.rank,
+        ann.factual_consistency,
+        ann.domain_type,
+        sr.timestamp AS collected_at
+      FROM annotations ann
+      JOIN search_results sr ON sr.id = ann.search_result_id
+      LEFT JOIN crawl_runs cr ON cr.id = sr.crawl_run_id
+      ${whereClause}
+      ORDER BY sr.timestamp DESC, sr.rank ASC
+      LIMIT $${conditions.length + 1}
+    `;
+
+    params.push(limit);
+
+    const result = await this.pool.query(query, params);
+
+    return result.rows.map((row): AnnotatedResultView => ({
+      runId: row.run_id || "",
+      batchId: row.batch_id || "",
+      annotationId: row.annotation_id,
+      queryId: row.query_id,
+      engine: row.engine,
+      normalizedUrl: row.normalized_url,
+      domain: row.domain,
+      rank: row.rank,
+      factualConsistency: row.factual_consistency,
+      domainType: row.domain_type,
+      collectedAt: new Date(row.collected_at)
+    }));
+  }
+
   async insertMetricRecords(records: MetricRecordInput[]): Promise<void> {
     if (!records.length) return;
     await this.ensureMetricTable();

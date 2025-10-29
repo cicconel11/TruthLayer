@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { subDays } from "date-fns";
-import { AnnotatedResultView, FactualConsistencyEnum } from "@truthlayer/schema";
+import { AnnotatedResultView, FactualConsistencyEnum, DomainTypeEnum } from "@truthlayer/schema";
 import type { MetricRecord } from "@truthlayer/schema";
 import type { MetricRecordInput } from "@truthlayer/storage";
 
@@ -259,4 +259,173 @@ export function toMetricRecordInputs(metrics: MetricComputation[], createdAt: Da
     },
     createdAt
   }));
+}
+
+// Viewpoint-specific metrics computation functions
+
+export function computeViewpointDiversityScore(run: RunGroup): MetricComputation | null {
+  if (!run.results.length) return null;
+
+  const domainDistribution = calculateDomainDistribution(run.results);
+  const diversityScore = calculateViewpointDiversityScore(domainDistribution, run.results.length);
+
+  return {
+    runId: run.runId,
+    queryId: run.results[0]?.queryId ?? "",
+    engine: null,
+    metricType: "viewpoint_diversity_score",
+    value: diversityScore,
+    delta: null,
+    comparedToRunId: null,
+    collectedAt: run.collectedAt,
+    windowStart: run.collectedAt,
+    windowEnd: run.collectedAt,
+    extra: {
+      domainDistribution: domainDistribution,
+      resultCount: run.results.length,
+      representedTypes: Object.values(domainDistribution).filter(p => p > 0).length
+    }
+  };
+}
+
+export function computeViewpointUnderrepresentedCount(run: RunGroup): MetricComputation | null {
+  if (!run.results.length) return null;
+
+  const domainDistribution = calculateDomainDistribution(run.results);
+  const underrepresentedTypes = identifyUnderrepresentedTypes(domainDistribution);
+
+  return {
+    runId: run.runId,
+    queryId: run.results[0]?.queryId ?? "",
+    engine: null,
+    metricType: "viewpoint_underrepresented_count",
+    value: underrepresentedTypes.length,
+    delta: null,
+    comparedToRunId: null,
+    collectedAt: run.collectedAt,
+    windowStart: run.collectedAt,
+    windowEnd: run.collectedAt,
+    extra: {
+      underrepresentedTypes,
+      domainDistribution,
+      totalTypes: Object.keys(domainDistribution).length
+    }
+  };
+}
+
+export function computeViewpointAlternativeSourcesAvailable(run: RunGroup): MetricComputation | null {
+  if (!run.results.length) return null;
+
+  // For this metric, we calculate the potential for alternative sources
+  // based on what domain types are underrepresented in the current results
+  const domainDistribution = calculateDomainDistribution(run.results);
+  const underrepresentedTypes = identifyUnderrepresentedTypes(domainDistribution);
+  
+  // Score based on potential: 0.0 to 1.0
+  const totalTypes = Object.keys(domainDistribution).length;
+  const potentialScore = Math.max(0.2, underrepresentedTypes.length / totalTypes);
+
+  return {
+    runId: run.runId,
+    queryId: run.results[0]?.queryId ?? "",
+    engine: null,
+    metricType: "viewpoint_alternative_sources_available",
+    value: potentialScore,
+    delta: null,
+    comparedToRunId: null,
+    collectedAt: run.collectedAt,
+    windowStart: run.collectedAt,
+    windowEnd: run.collectedAt,
+    extra: {
+      underrepresentedTypes,
+      potentialScore,
+      underrepresentedCount: underrepresentedTypes.length,
+      totalTypes
+    }
+  };
+}
+
+// Helper functions for viewpoint calculations
+
+function calculateDomainDistribution(results: AnnotatedResultView[]): Record<string, number> {
+  const total = results.length;
+  const distribution: Record<string, number> = {};
+  
+  Object.values(DomainTypeEnum.enum).forEach(type => {
+    distribution[type] = 0;
+  });
+  
+  results.forEach(result => {
+    distribution[result.domainType] = (distribution[result.domainType] || 0) + 1;
+  });
+  
+  Object.keys(distribution).forEach(type => {
+    distribution[type] = total > 0 ? distribution[type] / total : 0;
+  });
+  
+  return distribution;
+}
+
+const DOMAIN_WEIGHTS: Record<string, number> = {
+  [DomainTypeEnum.enum.government]: 1.5,
+  [DomainTypeEnum.enum.academic]: 1.3,
+  [DomainTypeEnum.enum.news]: 1.0,
+  [DomainTypeEnum.enum.blog]: 0.7,
+  [DomainTypeEnum.enum.other]: 0.5
+};
+
+function calculateViewpointDiversityScore(domainDistribution: Record<string, number>, totalResults: number): number {
+  let weightedScore = 0;
+  
+  Object.entries(domainDistribution).forEach(([domainType, percentage]) => {
+    if (percentage > 0) {
+      const weight = DOMAIN_WEIGHTS[domainType] || 0.5;
+      weightedScore += percentage * weight;
+    }
+  });
+  
+  weightedScore *= 100;
+  
+  const representedTypes = Object.values(domainDistribution).filter(p => p > 0).length;
+  const varietyBonus = Math.min(representedTypes * 5, 25);
+  
+  const resultCountPenalty = totalResults < 10 ? (10 - totalResults) * 2 : 0;
+  
+  const idealPerType = 1 / representedTypes;
+  const balancePenalty = Object.values(domainDistribution).reduce((penalty, percentage) => {
+    if (percentage > 0) {
+      const deviation = Math.abs(percentage - idealPerType);
+      return penalty + deviation * 20;
+    }
+    return penalty;
+  }, 0);
+  
+  const finalScore = Math.max(0, Math.min(100, weightedScore + varietyBonus - balancePenalty - resultCountPenalty));
+  
+  return Math.round(finalScore);
+}
+
+const DIVERSITY_THRESHOLDS = {
+  government: 0.15,
+  academic: 0.10,
+  news: 0.40,
+  blog: 0.20,
+  other: 0.15
+};
+
+function identifyUnderrepresentedTypes(domainDistribution: Record<string, number>): string[] {
+  const underrepresented: string[] = [];
+  
+  Object.entries(DIVERSITY_THRESHOLDS).forEach(([domainType, target]) => {
+    const actual = domainDistribution[domainType] || 0;
+    if (actual < target) {
+      underrepresented.push(domainType);
+    }
+  });
+  
+  return underrepresented.sort((a, b) => {
+    const deficitA = DIVERSITY_THRESHOLDS[a] - (domainDistribution[a] || 0);
+    const deficitB = DIVERSITY_THRESHOLDS[b] - (domainDistribution[b] || 0);
+    return deficitB - deficitA;
+  });
 }

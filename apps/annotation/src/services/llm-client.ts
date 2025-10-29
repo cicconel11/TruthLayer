@@ -1,5 +1,3 @@
-import { randomUUID } from "node:crypto";
-import { DomainTypeEnum, FactualConsistencyEnum } from "@truthlayer/schema";
 import type { AnnotationRecord } from "@truthlayer/schema";
 import { AnnotationConfig } from "../lib/config";
 import { Logger } from "../lib/logger";

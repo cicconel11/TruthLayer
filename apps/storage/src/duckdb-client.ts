@@ -600,6 +600,108 @@ export class DuckDBStorageClient implements StorageClient {
     }
   }
 
+  async fetchAlternativeSources(options: FetchAlternativeSourcesOptions): Promise<AnnotatedResultView[]> {
+    const conn = await this.getConnection();
+    try {
+      const conditions: string[] = [];
+      const params: unknown[] = [];
+
+      // Filter by domain types
+      if (options.domainTypes && options.domainTypes.length) {
+        const placeholders = options.domainTypes.map(() => "?").join(", ");
+        conditions.push(`ann.domain_type IN (${placeholders})`);
+        params.push(...options.domainTypes);
+      }
+
+      // Filter by factual consistency
+      if (options.factualConsistency && options.factualConsistency.length) {
+        const placeholders = options.factualConsistency.map(() => "?").join(", ");
+        conditions.push(`ann.factual_consistency IN (${placeholders})`);
+        params.push(...options.factualConsistency);
+      }
+
+      // Exclude specific URLs
+      if (options.excludeUrls && options.excludeUrls.length) {
+        const placeholders = options.excludeUrls.map(() => "?").join(", ");
+        conditions.push(`sr.normalized_url NOT IN (${placeholders})`);
+        params.push(...options.excludeUrls);
+      }
+
+      // Filter by keywords in title/snippet
+      if (options.queryKeywords && options.queryKeywords.length) {
+        const keywordConditions = options.queryKeywords.map(keyword => 
+          "(LOWER(sr.title) LIKE LOWER(?) OR LOWER(sr.snippet) LIKE LOWER(?))"
+        ).join(" OR ");
+        conditions.push(`(${keywordConditions})`);
+        params.push(...options.queryKeywords.flatMap(keyword => [`%${keyword}%`, `%${keyword}%`]));
+      }
+
+      // Filter by date
+      if (options.since) {
+        conditions.push("sr.timestamp >= CAST(? AS TIMESTAMP)");
+        params.push(options.since.toISOString());
+      }
+
+      // Limit results
+      const limit = options.limit || 50;
+
+      const whereClause = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+
+      const rows = await all<{
+        run_id: string | null;
+        batch_id: string | null;
+        annotation_id: string;
+        query_id: string;
+        engine: string;
+        normalized_url: string;
+        domain: string;
+        rank: number;
+        factual_consistency: string;
+        domain_type: string;
+        collected_at: string | Date;
+      }>(
+        conn,
+        `
+          SELECT
+            cr.id AS run_id,
+            cr.batch_id,
+            ann.id AS annotation_id,
+            sr.query_id,
+            sr.engine,
+            sr.normalized_url,
+            sr.domain,
+            sr.rank,
+            ann.factual_consistency,
+            ann.domain_type,
+            sr.timestamp AS collected_at
+          FROM annotations ann
+          JOIN search_results sr ON sr.id = ann.search_result_id
+          LEFT JOIN crawl_runs cr ON cr.id = sr.crawl_run_id
+          ${whereClause}
+          ORDER BY sr.timestamp DESC, sr.rank ASC
+          LIMIT ?
+        `,
+        [...params, limit]
+      );
+
+      return rows.map((row): AnnotatedResultView => ({
+        runId: row.run_id || "",
+        batchId: row.batch_id || "",
+        annotationId: row.annotation_id,
+        queryId: row.query_id,
+        engine: row.engine,
+        normalizedUrl: row.normalized_url,
+        domain: row.domain,
+        rank: row.rank,
+        factualConsistency: row.factual_consistency,
+        domainType: row.domain_type,
+        collectedAt: typeof row.collected_at === "string" ? new Date(row.collected_at) : row.collected_at
+      }));
+    } finally {
+      await closeConnection(conn);
+    }
+  }
+
   async insertMetricRecords(records: MetricRecordInput[]): Promise<void> {
     if (!records.length) return;
 

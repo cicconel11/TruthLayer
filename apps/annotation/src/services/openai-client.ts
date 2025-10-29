@@ -1,5 +1,4 @@
 import { OpenAI } from "openai";
-import { DomainTypeEnum, FactualConsistencyEnum } from "@truthlayer/schema";
 import { AnnotationConfig } from "../lib/config";
 import { Logger } from "../lib/logger";
 import {
