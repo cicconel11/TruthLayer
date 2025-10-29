@@ -46,6 +46,7 @@ interface InMemoryStorageState {
   pipelineRuns: PipelineRun[];
   pipelineStages: PipelineStageLog[];
   auditSamples: AuditSampleRecordInput[];
+  viewpoints: import("./types").ViewpointRecordInput[];
 }
 
 export function createInMemoryStorageClient(initialState?: Partial<InMemoryStorageState>): StorageClient {
@@ -65,7 +66,8 @@ export function createInMemoryStorageClient(initialState?: Partial<InMemoryStora
     datasetVersions: initialState?.datasetVersions ? [...initialState.datasetVersions] : [],
     pipelineRuns: initialState?.pipelineRuns ? [...initialState.pipelineRuns] : [],
     pipelineStages: initialState?.pipelineStages ? [...initialState.pipelineStages] : [],
-    auditSamples: initialState?.auditSamples ? [...initialState.auditSamples] : []
+    auditSamples: initialState?.auditSamples ? [...initialState.auditSamples] : [],
+    viewpoints: initialState?.viewpoints ? [...initialState.viewpoints] : []
   };
 
   return {
@@ -168,7 +170,7 @@ export function createInMemoryStorageClient(initialState?: Partial<InMemoryStora
       });
     },
 
-    async fetchAlternativeSources(options: FetchAlternativeSourcesOptions): Promise<AnnotatedResultView[]> {
+    async fetchAlternativeSources(options: import("./types").FetchAlternativeSourcesOptions): Promise<AnnotatedResultView[]> {
       const limit = options.limit || 50;
       return state.annotatedResults
         .filter((result) => {
@@ -177,10 +179,8 @@ export function createInMemoryStorageClient(initialState?: Partial<InMemoryStora
           if (options.factualConsistency && !options.factualConsistency.includes(result.factualConsistency)) return false;
           if (options.excludeUrls && options.excludeUrls.includes(result.normalizedUrl)) return false;
           if (options.queryKeywords && options.queryKeywords.length > 0) {
-            const titleSnippet = `${result.title} ${result.snippet || ''}`.toLowerCase();
-            const hasKeyword = options.queryKeywords.some(keyword => 
-              titleSnippet.includes(keyword.toLowerCase())
-            );
+            const searchText = `${result.domain} ${result.normalizedUrl}`.toLowerCase();
+            const hasKeyword = options.queryKeywords.some(keyword => searchText.includes(keyword.toLowerCase()));
             if (!hasKeyword) return false;
           }
           return true;
@@ -348,6 +348,36 @@ export function createInMemoryStorageClient(initialState?: Partial<InMemoryStora
         .filter((stage) => stage.runId === runId)
         .slice()
         .sort((a, b) => a.startedAt.getTime() - b.startedAt.getTime());
+    },
+
+    async upsertViewpoints(records: import("./types").ViewpointRecordInput[]): Promise<void> {
+      if (!records.length) return;
+      
+      for (const record of records) {
+        // Remove existing record with same query_id, crawl_run_id, engine
+        const existingIndex = state.viewpoints.findIndex(
+          (v) => v.queryId === record.queryId && 
+                 v.crawlRunId === record.crawlRunId && 
+                 v.engine === record.engine
+        );
+        
+        if (existingIndex >= 0) {
+          state.viewpoints[existingIndex] = record;
+        } else {
+          state.viewpoints.push(record);
+        }
+      }
+    },
+
+    async fetchViewpointsByQuery(options: import("./types").FetchViewpointsByQueryOptions): Promise<import("./types").ViewpointRecordInput[]> {
+      return state.viewpoints
+        .filter((viewpoint) => {
+          if (viewpoint.queryId !== options.queryId) return false;
+          if (options.runId && viewpoint.crawlRunId !== options.runId) return false;
+          if (options.engines && options.engines.length > 0 && !options.engines.includes(viewpoint.engine)) return false;
+          return true;
+        })
+        .sort((a, b) => b.collectedAt.getTime() - a.collectedAt.getTime());
     },
 
     async close(): Promise<void> {

@@ -6,6 +6,7 @@ import { StorageClient } from "./types";
 
 export { createInMemoryStorageClient };
 export * from "./types";
+export type { FetchAlternativeSourcesOptions } from "./types";
 export * from "./save";
 
 export interface CreateStorageClientOptions {

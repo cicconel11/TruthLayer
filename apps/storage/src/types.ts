@@ -184,6 +184,26 @@ export interface FetchPipelineRunOptions {
   limit?: number;
 }
 
+export interface ViewpointRecordInput {
+  id: string;
+  queryId: string;
+  crawlRunId: string | null;
+  engine: string;
+  numResults: number;
+  summary?: string | null;
+  citationsCount: number;
+  overlapHash?: string | null;
+  collectedAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface FetchViewpointsByQueryOptions {
+  queryId: string;
+  runId?: string;
+  engines?: string[];
+}
+
 export interface StorageClient {
   fetchPendingAnnotations(options: FetchPendingAnnotationsOptions): Promise<SearchResult[]>;
   insertAnnotationRecords(records: AnnotationRecordInput[]): Promise<void>;
@@ -202,5 +222,7 @@ export interface StorageClient {
   fetchPipelineStages(runId: string): Promise<PipelineStageLog[]>;
   recordAuditSamples(samples: AuditSampleRecordInput[]): Promise<void>;
   fetchAuditSamples(runId: string): Promise<AuditSampleRecordInput[]>;
+  upsertViewpoints(records: ViewpointRecordInput[]): Promise<void>;
+  fetchViewpointsByQuery(options: FetchViewpointsByQueryOptions): Promise<ViewpointRecordInput[]>;
   close(): Promise<void>;
 }

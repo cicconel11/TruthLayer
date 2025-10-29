@@ -600,7 +600,7 @@ export class DuckDBStorageClient implements StorageClient {
     }
   }
 
-  async fetchAlternativeSources(options: FetchAlternativeSourcesOptions): Promise<AnnotatedResultView[]> {
+  async fetchAlternativeSources(options: import("./types").FetchAlternativeSourcesOptions): Promise<AnnotatedResultView[]> {
     const conn = await this.getConnection();
     try {
       const conditions: string[] = [];
@@ -1517,6 +1517,151 @@ export class DuckDBStorageClient implements StorageClient {
         reviewer: row.reviewer,
         status: row.status as "pending" | "approved" | "flagged",
         notes: row.notes,
+        createdAt: new Date(row.created_at),
+        updatedAt: new Date(row.updated_at)
+      }));
+    } finally {
+      await closeConnection(conn);
+    }
+  }
+
+  async upsertViewpoints(records: import("./types").ViewpointRecordInput[]): Promise<void> {
+    if (records.length === 0) return;
+
+    const conn = await openConnection(this.db);
+    try {
+      // Create table if not exists
+      await run(
+        conn,
+        `
+          CREATE TABLE IF NOT EXISTS viewpoints (
+            id VARCHAR PRIMARY KEY,
+            query_id VARCHAR NOT NULL,
+            crawl_run_id VARCHAR,
+            engine VARCHAR NOT NULL,
+            num_results INTEGER NOT NULL DEFAULT 0,
+            summary TEXT,
+            citations_count INTEGER DEFAULT 0,
+            overlap_hash VARCHAR,
+            collected_at TIMESTAMP NOT NULL,
+            created_at TIMESTAMP NOT NULL,
+            updated_at TIMESTAMP NOT NULL,
+            UNIQUE(query_id, crawl_run_id, engine)
+          )
+        `
+      );
+
+      // DuckDB doesn't support ON CONFLICT with UNIQUE constraints well,
+      // so we'll delete and insert
+      for (const record of records) {
+        await run(
+          conn,
+          `
+            DELETE FROM viewpoints
+            WHERE query_id = ? AND crawl_run_id = ? AND engine = ?
+          `,
+          [record.queryId, record.crawlRunId, record.engine]
+        );
+
+        await run(
+          conn,
+          `
+            INSERT INTO viewpoints (
+              id, query_id, crawl_run_id, engine, num_results, summary,
+              citations_count, overlap_hash, collected_at, created_at, updated_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `,
+          [
+            record.id,
+            record.queryId,
+            record.crawlRunId,
+            record.engine,
+            record.numResults,
+            record.summary,
+            record.citationsCount,
+            record.overlapHash,
+            record.collectedAt.toISOString(),
+            record.createdAt.toISOString(),
+            record.updatedAt.toISOString()
+          ]
+        );
+      }
+    } finally {
+      await closeConnection(conn);
+    }
+  }
+
+  async fetchViewpointsByQuery(options: import("./types").FetchViewpointsByQueryOptions): Promise<import("./types").ViewpointRecordInput[]> {
+    const conn = await openConnection(this.db);
+    try {
+      // Ensure table exists
+      await run(
+        conn,
+        `
+          CREATE TABLE IF NOT EXISTS viewpoints (
+            id VARCHAR PRIMARY KEY,
+            query_id VARCHAR NOT NULL,
+            crawl_run_id VARCHAR,
+            engine VARCHAR NOT NULL,
+            num_results INTEGER NOT NULL DEFAULT 0,
+            summary TEXT,
+            citations_count INTEGER DEFAULT 0,
+            overlap_hash VARCHAR,
+            collected_at TIMESTAMP NOT NULL,
+            created_at TIMESTAMP NOT NULL,
+            updated_at TIMESTAMP NOT NULL
+          )
+        `
+      );
+
+      const conditions: string[] = ["query_id = ?"];
+      const params: any[] = [options.queryId];
+
+      if (options.runId) {
+        conditions.push("crawl_run_id = ?");
+        params.push(options.runId);
+      }
+
+      if (options.engines && options.engines.length > 0) {
+        const placeholders = options.engines.map(() => "?").join(", ");
+        conditions.push(`engine IN (${placeholders})`);
+        params.push(...options.engines);
+      }
+
+      const rows = await all<{
+        id: string;
+        query_id: string;
+        crawl_run_id: string | null;
+        engine: string;
+        num_results: number;
+        summary: string | null;
+        citations_count: number;
+        overlap_hash: string | null;
+        collected_at: string | Date;
+        created_at: string | Date;
+        updated_at: string | Date;
+      }>(
+        conn,
+        `
+          SELECT *
+          FROM viewpoints
+          WHERE ${conditions.join(" AND ")}
+          ORDER BY engine, collected_at DESC
+        `,
+        params
+      );
+
+      return rows.map((row) => ({
+        id: row.id,
+        queryId: row.query_id,
+        crawlRunId: row.crawl_run_id,
+        engine: row.engine,
+        numResults: row.num_results,
+        summary: row.summary,
+        citationsCount: row.citations_count,
+        overlapHash: row.overlap_hash,
+        collectedAt: new Date(row.collected_at),
         createdAt: new Date(row.created_at),
         updatedAt: new Date(row.updated_at)
       }));

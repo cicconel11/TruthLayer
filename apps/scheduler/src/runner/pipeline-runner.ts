@@ -226,19 +226,70 @@ async function ingestCollectorOutputs(
       }
     }
 
+    console.log(`[Scheduler] Collected ${searchResults.length} search results from ${jsonFiles.length} files`);
+    console.log(`[Scheduler] Built ${crawlRunMap.size} crawl run records`);
+    
     if (crawlRunMap.size) {
-      await storage.recordCrawlRuns(Array.from(crawlRunMap.values()));
+      // Deduplicate crawl runs by ID (multiple files may have same crawlRunId from previous runs)
+      const crawlRuns = Array.from(crawlRunMap.values());
+      const dedupCrawlMap = new Map<string, CrawlRunRecordInput>();
+      crawlRuns.forEach(cr => dedupCrawlMap.set(cr.id, cr));
+      const dedupedCrawlRuns = Array.from(dedupCrawlMap.values());
+      
+      if (dedupedCrawlRuns.length < crawlRuns.length) {
+        console.log(`[Scheduler] Deduped crawl runs: ${crawlRuns.length} → ${dedupedCrawlRuns.length}`);
+      }
+      
+      console.log(`[Scheduler] Calling recordCrawlRuns with ${dedupedCrawlRuns.length} records...`);
+      try {
+        await storage.recordCrawlRuns(dedupedCrawlRuns);
+        console.log(`[Scheduler] recordCrawlRuns completed successfully`);
+      } catch (err) {
+        console.error(`[Scheduler] recordCrawlRuns FAILED:`, err);
+        throw err;
+      }
     }
 
     const hashDuplicates = Array.from(duplicateHashes.values()).filter((count) => count > 1).length;
     const urlDuplicates = Array.from(duplicateUrls.values()).filter((count) => count > 1).length;
 
     if (searchResults.length) {
-      await storage.insertSearchResults(searchResults);
+      // Deduplicate at scheduler level before passing to storage
+      // This prevents ON CONFLICT errors when multiple files contain the same (query_id, engine, url)
+      const dedupMap = new Map<string, SearchResultInput>();
+      searchResults.forEach(r => {
+        const key = `${r.queryId}-${r.engine}-${r.url}`;
+        dedupMap.set(key, r); // Keep last occurrence
+      });
+      
+      const dedupedResults = Array.from(dedupMap.values());
+      const duplicatesRemoved = searchResults.length - dedupedResults.length;
+      
+      console.log(`[Scheduler] Deduplicating search results: ${searchResults.length} → ${dedupedResults.length} (removed ${duplicatesRemoved})`);
+      
+      if (duplicatesRemoved > 0) {
+        logger.info(
+          "scheduler deduplication",
+          sanitizeLogMeta({
+            original: searchResults.length,
+            deduped: dedupedResults.length,
+            removed: duplicatesRemoved
+          })
+        );
+      }
+      
+      try {
+        await storage.insertSearchResults(dedupedResults);
+        console.log(`[Scheduler] Successfully inserted ${dedupedResults.length} search results`);
+      } catch (insertError) {
+        console.error(`[Scheduler] insertSearchResults failed:`, insertError);
+        throw insertError;
+      }
+      
       logger.info(
         "collector ingestion",
         sanitizeLogMeta({
-          ingestedResults: searchResults.length,
+          ingestedResults: dedupedResults.length,
           runs: crawlRunMap.size
         })
       );

@@ -71,6 +71,9 @@ importers:
       '@truthlayer/schema':
         specifier: link:../../packages/schema
         version: link:../../packages/schema
+      '@truthlayer/storage':
+        specifier: link:../storage
+        version: link:../storage
       '@types/cheerio':
         specifier: ^1.0.0
         version: 1.0.0

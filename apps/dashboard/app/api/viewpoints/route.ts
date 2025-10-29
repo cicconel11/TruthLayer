@@ -325,8 +325,7 @@ export async function GET(request: Request) {
     console.error('[VIEWPOINTS-ERROR] Request failed', { 
       error: (error as Error).message,
       stack: (error as Error).stack,
-      processingTime,
-      query
+      processingTime
     });
 
     return NextResponse.json(
