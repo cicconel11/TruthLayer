@@ -1,0 +1,32 @@
+[
+  {
+    "id": "44444444-4444-4444-4444-444444444444",
+    "query": "voice AI",
+    "topic": "voice-ai",
+    "tags": [
+      "ai",
+      "voice",
+      "technology"
+    ]
+  },
+  {
+    "id": "55555555-5555-5555-5555-555555555555",
+    "query": "voice AI assistants",
+    "topic": "voice-ai",
+    "tags": [
+      "ai",
+      "voice",
+      "assistants"
+    ]
+  },
+  {
+    "id": "66666666-6666-6666-6666-666666666666",
+    "query": "best voice AI technology",
+    "topic": "voice-ai",
+    "tags": [
+      "ai",
+      "voice",
+      "comparison"
+    ]
+  }
+]
