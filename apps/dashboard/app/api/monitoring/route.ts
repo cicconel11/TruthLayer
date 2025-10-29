@@ -87,4 +87,4 @@ export async function GET() {
   }
   // Note: Don't close storage - using singleton pattern for DuckDB
 }
-
+export const dynamic = "force-dynamic";
