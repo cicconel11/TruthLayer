@@ -406,11 +406,35 @@ export function DashboardView() {
   return (
     <main className="container">
       <header className="card" style={{ marginBottom: '1.8rem' }}>
-        <h1 className="header-title">TruthLayer Visibility Metrics</h1>
-        <p className="header-subtitle">
-          Track cross-engine visibility and factual alignment trends for the benchmark query set. Filters operate locally so you
-          can explore engines, topics, and individual queries.
-        </p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+          <div style={{ flex: 1 }}>
+            <h1 className="header-title">TruthLayer Visibility Metrics</h1>
+            <p className="header-subtitle">
+              Track cross-engine visibility and factual alignment trends for the benchmark query set. Filters operate locally so you
+              can explore engines, topics, and individual queries.
+            </p>
+          </div>
+          <a
+            href="/compare"
+            style={{
+              display: 'inline-block',
+              padding: '0.75rem 1.5rem',
+              backgroundColor: '#2563eb',
+              color: 'white',
+              borderRadius: '0.375rem',
+              textDecoration: 'none',
+              fontWeight: '600',
+              fontSize: '0.875rem',
+              transition: 'background-color 0.2s',
+              whiteSpace: 'nowrap',
+              marginLeft: '1rem'
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#1d4ed8')}
+            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#2563eb')}
+          >
+            Compare Queries →
+          </a>
+        </div>
         <div className="metrics-meta">
           <span>Last refreshed: {new Date(state.data.generatedAt).toLocaleString()}</span>
           <span>Runs tracked: {state.data.runIds.length || '0'}</span>

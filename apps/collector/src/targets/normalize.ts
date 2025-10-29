@@ -15,8 +15,9 @@ export function normalizeResults(params: {
   collectedAt: Date;
   rawHtmlPath: string;
   items: RawSerpItem[];
+  crawlRunId: string;
 }): SearchResult[] {
-  const { engine, query, collectedAt, rawHtmlPath, items } = params;
+  const { engine, query, collectedAt, rawHtmlPath, items, crawlRunId } = params;
 
   return items
     .filter((i) => {
@@ -41,7 +42,7 @@ export function normalizeResults(params: {
 
       return {
         id: randomUUID(),
-        crawlRunId: null,
+        crawlRunId,
         queryId: query.id,
         engine,
         rank: item.rank,

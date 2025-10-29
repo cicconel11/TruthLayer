@@ -14,6 +14,7 @@ import { normalizeResults, RawSerpItem } from "./normalize";
 interface CreateBingClientOptions {
   config: CollectorConfig;
   logger: Logger;
+  runId: string;
 }
 
 interface BingApiResponse {
@@ -26,7 +27,7 @@ interface BingApiResponse {
   };
 }
 
-export function createBingClient({ config, logger }: CreateBingClientOptions) {
+export function createBingClient({ config, logger, runId }: CreateBingClientOptions) {
   async function search(query: BenchmarkQuery): Promise<SearchResult[]> {
     if (!config.bingApiKey) {
       logger.error("bing api key missing", { 
@@ -119,10 +120,10 @@ export function createBingClient({ config, logger }: CreateBingClientOptions) {
       return normalizeResults({
         engine: "bing",
         query,
-        rawResults,
+        items: rawResults,
         collectedAt,
-        config,
-        rawHtmlPath: null // API-based, no HTML
+        rawHtmlPath: null, // API-based, no HTML
+        crawlRunId: runId
       });
     } catch (error) {
       logger.error("bing search failed", { 
