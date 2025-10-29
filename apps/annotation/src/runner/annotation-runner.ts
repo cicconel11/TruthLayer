@@ -324,6 +324,7 @@ export function createAnnotationRunner({
       const pendingRecords: AnnotationRecordInput[] = [];
 
       try {
+        // eslint-disable-next-line no-constant-condition
         while (true) {
           const tasks = await loadPendingTasks();
           if (!tasks.length) {

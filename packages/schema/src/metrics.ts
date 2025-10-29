@@ -3,8 +3,11 @@ import { EngineEnum } from "./search-result";
 
 export const MetricTypeEnum = z.enum([
   "domain_diversity",
-  "engine_overlap",
-  "factual_alignment"
+  "engine_overlap", 
+  "factual_alignment",
+  "viewpoint_diversity_score",
+  "viewpoint_underrepresented_count",
+  "viewpoint_alternative_sources_available"
 ]);
 
 export const MetricRecordSchema = z.object({

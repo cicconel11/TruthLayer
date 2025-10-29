@@ -168,6 +168,26 @@ export function createInMemoryStorageClient(initialState?: Partial<InMemoryStora
       });
     },
 
+    async fetchAlternativeSources(options: FetchAlternativeSourcesOptions): Promise<AnnotatedResultView[]> {
+      const limit = options.limit || 50;
+      return state.annotatedResults
+        .filter((result) => {
+          if (options.since && result.collectedAt < options.since) return false;
+          if (options.domainTypes && !options.domainTypes.includes(result.domainType)) return false;
+          if (options.factualConsistency && !options.factualConsistency.includes(result.factualConsistency)) return false;
+          if (options.excludeUrls && options.excludeUrls.includes(result.normalizedUrl)) return false;
+          if (options.queryKeywords && options.queryKeywords.length > 0) {
+            const titleSnippet = `${result.title} ${result.snippet || ''}`.toLowerCase();
+            const hasKeyword = options.queryKeywords.some(keyword => 
+              titleSnippet.includes(keyword.toLowerCase())
+            );
+            if (!hasKeyword) return false;
+          }
+          return true;
+        })
+        .slice(0, limit);
+    },
+
     async insertMetricRecords(records: MetricRecordInput[]): Promise<void> {
       if (!records.length) return;
       const ids = new Set(records.map((record) => record.id));

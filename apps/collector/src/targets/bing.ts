@@ -1,6 +1,7 @@
 import { BenchmarkQuery, SearchResult } from "@truthlayer/schema";
 import { CollectorConfig } from "../lib/config";
 import { Logger } from "../lib/logger";
+import { cachedAndRetryableFetch } from "../lib/retry";
 import { takeHtmlSnapshot } from "./utils";
 import { normalizeResults, RawSerpItem } from "./normalize";
 
@@ -52,13 +53,27 @@ export function createBingClient({ config, logger, runId }: CreateBingClientOpti
         count: config.maxResultsPerQuery 
       });
 
-      const response = await fetch(url, {
-        method: "GET",
-        headers: {
-          "Ocp-Apim-Subscription-Key": config.bingApiKey,
-          "Accept": "application/json"
+      const response = await cachedAndRetryableFetch(
+        url,
+        {
+          method: "GET",
+          headers: {
+            "Ocp-Apim-Subscription-Key": config.bingApiKey,
+            "Accept": "application/json"
+          }
+        },
+        {
+          engine: "bing",
+          query: query.query,
+          logger
+        },
+        undefined,
+        {
+          cacheDir: "data/cache/http",
+          ttlMs: 24 * 60 * 60 * 1000,
+          enabled: true
         }
-      });
+      );
 
       if (!response.ok) {
         const errorBody = await response.text();
