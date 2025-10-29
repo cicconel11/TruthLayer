@@ -13,23 +13,25 @@ export interface SearchEngineClient {
 export async function createEngineClient({
   engine,
   config,
-  logger
+  logger,
+  runId
 }: {
   engine: string;
   config: CollectorConfig;
   logger: Logger;
+  runId: string;
 }): Promise<SearchEngineClient> {
   switch (engine) {
     case "google":
-      return createGoogleClient({ config, logger });
+      return createGoogleClient({ config, logger, runId });
     case "bing":
-      return createBingClient({ config, logger });
+      return createBingClient({ config, logger, runId });
     case "perplexity":
-      return createPerplexityClient({ config, logger });
+      return createPerplexityClient({ config, logger, runId });
     case "brave":
-      return createBraveClient({ config, logger });
+      return createBraveClient({ config, logger, runId });
     case "duckduckgo":
-      return createDuckDuckGoClient({ config, logger });
+      return createDuckDuckGoClient({ config, logger, runId });
     default:
       throw new Error(`Unsupported engine: ${engine}`);
   }

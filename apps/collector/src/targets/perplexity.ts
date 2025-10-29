@@ -10,9 +10,10 @@ import pRetry from "p-retry";
 interface CreatePerplexityClientOptions {
   config: CollectorConfig;
   logger: Logger;
+  runId: string;
 }
 
-export function createPerplexityClient({ config, logger }: CreatePerplexityClientOptions) {
+export function createPerplexityClient({ config, logger, runId }: CreatePerplexityClientOptions) {
   let browser: Browser | null = null;
 
   async function search(query: BenchmarkQuery): Promise<SearchResult[]> {
@@ -122,7 +123,8 @@ export function createPerplexityClient({ config, logger }: CreatePerplexityClien
         query,
         collectedAt,
         rawHtmlPath: htmlPath,
-        items: rawResults
+        items: rawResults,
+        crawlRunId: runId
       });
     } catch (error) {
       logger.error("perplexity search failed", { 

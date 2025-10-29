@@ -5,7 +5,7 @@ import { createStorageClient } from "@truthlayer/storage";
 import { BenchmarkQuerySetSchema, MetricTypeEnum } from "@truthlayer/schema";
 
 const METRIC_TYPES = MetricTypeEnum.options;
-const DEFAULT_LIMIT = 150;
+const DEFAULT_LIMIT = 50; // Reduced from 150 for faster initial load
 
 type QueryMeta = { query: string; topic: string; tags: string[] };
 
@@ -63,6 +63,10 @@ function getStorageClient() {
   return storageClient;
 }
 
+function resetStorageClient() {
+  storageClient = null;
+}
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const limit = Number.parseInt(searchParams.get("limit") ?? "", 10) || DEFAULT_LIMIT;
@@ -71,7 +75,7 @@ export async function GET(request: Request) {
   const topicFilter = searchParams.get("topic") ?? undefined;
   const queryFilter = searchParams.get("queryId") ?? undefined;
 
-  const storage = getStorageClient();
+  let storage = getStorageClient();
   try {
     const metricsByType: Record<string, SerializedMetricRecord[]> = {};
     const runIds = new Set<string>();
@@ -185,6 +189,26 @@ export async function GET(request: Request) {
     return NextResponse.json(response, { status: 200 });
   } catch (error) {
     console.error("metrics api error", error);
+    
+    // If DuckDB connection closed, reset singleton and retry once
+    if (error && typeof error === 'object' && 'code' in error && error.code === 'DUCKDB_NODEJS_ERROR') {
+      console.warn("DuckDB connection closed, resetting singleton and retrying...");
+      resetStorageClient();
+      
+      // Retry once with fresh connection
+      try {
+        storage = getStorageClient();
+        // Simplified retry - just fetch one metric type to verify connection
+        await storage.fetchRecentMetricRecords("domain_diversity", 1);
+        console.log("Connection recovered, please retry your request");
+        return NextResponse.json({ 
+          error: "Connection recovered, please refresh the page" 
+        }, { status: 503 });
+      } catch (retryError) {
+        console.error("Failed to recover DuckDB connection", retryError);
+      }
+    }
+    
     return NextResponse.json({ error: "Failed to load metrics" }, { status: 500 });
   }
   // Note: Don't close storage - using singleton pattern for DuckDB

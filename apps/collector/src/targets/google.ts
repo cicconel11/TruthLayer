@@ -10,6 +10,7 @@ import crypto from "crypto";
 interface CreateGoogleClientOptions {
   config: CollectorConfig;
   logger: Logger;
+  runId: string;
 }
 
 interface GoogleSearchItem {
@@ -27,7 +28,7 @@ interface GoogleSearchResponse {
   };
 }
 
-export function createGoogleClient({ config, logger }: CreateGoogleClientOptions) {
+export function createGoogleClient({ config, logger, runId }: CreateGoogleClientOptions) {
   const env = loadEnv();
   const apiKey = env.GOOGLE_API_KEY;
   const searchEngineId = env.GOOGLE_SEARCH_ENGINE_ID;
@@ -94,10 +95,10 @@ export function createGoogleClient({ config, logger }: CreateGoogleClientOptions
       const normalized = normalizeResults({
         engine: "google",
         query,
-        rawResults,
+        items: rawResults,
         collectedAt,
-        config,
-        rawHtmlPath: null // API-based, no HTML
+        rawHtmlPath: null, // API-based, no HTML
+        crawlRunId: runId
       });
 
       return normalized;

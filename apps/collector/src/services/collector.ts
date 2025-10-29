@@ -6,19 +6,20 @@ import { createEngineClient, SearchEngineClient } from "../targets";
 interface CreateCollectorOptions {
   config: CollectorConfig;
   logger: Logger;
+  runId: string;
 }
 
 export interface Collector {
   collect: (query: BenchmarkQuery) => Promise<Record<string, unknown>[]>;
 }
 
-export async function createCollector({ config, logger }: CreateCollectorOptions): Promise<Collector> {
+export async function createCollector({ config, logger, runId }: CreateCollectorOptions): Promise<Collector> {
   const engines: Record<string, SearchEngineClient> = {};
 
   for (const engineName of Object.keys(config.engines)) {
     const engineConfig = config.engines[engineName as keyof typeof config.engines];
     if (!engineConfig.enabled) continue;
-    engines[engineName] = await createEngineClient({ engine: engineName, config, logger });
+    engines[engineName] = await createEngineClient({ engine: engineName, config, logger, runId });
   }
 
   return {
@@ -48,6 +49,24 @@ export async function createCollector({ config, logger }: CreateCollectorOptions
       for (const engineResults of allResults) {
         results.push(...engineResults);
       }
+
+      // Log per-query summary
+      const engineCounts: Record<string, number> = {};
+      for (const result of results) {
+        const engine = (result as any).engine;
+        if (engine) {
+          engineCounts[engine] = (engineCounts[engine] || 0) + 1;
+        }
+      }
+
+      const enabledEngines = Object.keys(engineCounts);
+      logger.info("query collection complete", {
+        query: query.query,
+        queryId: query.id,
+        engines: enabledEngines,
+        results: engineCounts,
+        totalResults: results.length
+      });
 
       return results;
     }

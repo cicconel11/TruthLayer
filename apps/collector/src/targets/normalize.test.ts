@@ -5,6 +5,7 @@ import { SearchResultSchema } from "@truthlayer/schema";
 describe("normalizeResults", () => {
   it("normalizes raw items to SearchResult schema", () => {
     const collectedAt = new Date("2024-01-01T00:00:00.000Z");
+    const crawlRunId = "22222222-2222-2222-2222-222222222222";
     const results = normalizeResults({
       engine: "google",
       query: { id: "11111111-1111-1111-1111-111111111111", query: "test", topic: "demo" },
@@ -13,7 +14,8 @@ describe("normalizeResults", () => {
       items: [
         { rank: 1, title: "Example Domain", snippet: "A snippet", url: "https://example.com/" },
         { rank: 2, title: "", snippet: undefined, url: "https://example.org/page" }
-      ]
+      ],
+      crawlRunId
     });
 
     expect(results.length).toBe(2);
@@ -24,6 +26,7 @@ describe("normalizeResults", () => {
       expect(parsed.rank).toBeGreaterThanOrEqual(1);
       expect(typeof parsed.hash).toBe("string");
       expect(parsed.hash).toHaveLength(64);
+      expect(parsed.crawlRunId).toBe(crawlRunId);
     }
     // When title is missing, url should be used
     expect(results[1].title).toBe("https://example.org/page");

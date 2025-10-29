@@ -11,6 +11,10 @@ function getStorageClient() {
   return storageClient;
 }
 
+function resetStorageClient() {
+  storageClient = null;
+}
+
 function computeAccuracy(records: { factualConsistency: string; count: number }[]) {
   const totals: Record<string, number> = {};
   for (const record of records) {
@@ -31,7 +35,7 @@ function computeAccuracy(records: { factualConsistency: string; count: number }[
 }
 
 export async function GET() {
-  const storage = getStorageClient();
+  let storage = getStorageClient();
   try {
     const pipelineRuns = await storage.fetchPipelineRuns({ limit: 20 });
     const runsWithStages = await Promise.all(
@@ -69,6 +73,16 @@ export async function GET() {
     );
   } catch (error) {
     console.error("monitoring api error", error);
+    
+    // If DuckDB connection closed, reset singleton
+    if (error && typeof error === 'object' && 'code' in error && error.code === 'DUCKDB_NODEJS_ERROR') {
+      console.warn("DuckDB connection closed, resetting singleton");
+      resetStorageClient();
+      return NextResponse.json({ 
+        error: "Connection recovered, please refresh the page" 
+      }, { status: 503 });
+    }
+    
     return NextResponse.json({ error: "Failed to load monitoring data" }, { status: 500 });
   }
   // Note: Don't close storage - using singleton pattern for DuckDB

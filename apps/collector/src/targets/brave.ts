@@ -14,6 +14,7 @@ import { normalizeResults, RawSerpItem } from "./normalize";
 interface CreateBraveClientOptions {
   config: CollectorConfig;
   logger: Logger;
+  runId: string;
 }
 
 interface BraveApiResponse {
@@ -26,7 +27,7 @@ interface BraveApiResponse {
   };
 }
 
-export function createBraveClient({ config, logger }: CreateBraveClientOptions) {
+export function createBraveClient({ config, logger, runId }: CreateBraveClientOptions) {
   async function search(query: BenchmarkQuery): Promise<SearchResult[]> {
     if (!config.braveApiKey) {
       logger.error("brave api key missing", { 
@@ -119,10 +120,10 @@ export function createBraveClient({ config, logger }: CreateBraveClientOptions) 
       return normalizeResults({
         engine: "brave",
         query,
-        rawResults,
+        items: rawResults,
         collectedAt,
-        config,
-        rawHtmlPath: null // API-based, no HTML
+        rawHtmlPath: null, // API-based, no HTML
+        crawlRunId: runId
       });
     } catch (error) {
       logger.error("brave search failed", { 

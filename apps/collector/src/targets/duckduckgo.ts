@@ -18,6 +18,7 @@ import { load } from "cheerio";
 interface CreateDuckDuckGoClientOptions {
   config: CollectorConfig;
   logger: Logger;
+  runId: string;
 }
 
 interface DuckDuckGoApiResponse {
@@ -38,7 +39,7 @@ interface DuckDuckGoApiResponse {
   }>;
 }
 
-export function createDuckDuckGoClient({ config, logger }: CreateDuckDuckGoClientOptions) {
+export function createDuckDuckGoClient({ config, logger, runId }: CreateDuckDuckGoClientOptions) {
   async function searchViaApi(query: BenchmarkQuery): Promise<RawSerpItem[]> {
     try {
       const endpoint = "https://api.duckduckgo.com/";
@@ -257,7 +258,8 @@ export function createDuckDuckGoClient({ config, logger }: CreateDuckDuckGoClien
         query,
         collectedAt,
         rawHtmlPath: htmlPath,
-        items: rawResults
+        items: rawResults,
+        crawlRunId: runId
       });
 
       logger.info("duckduckgo after normalization", {

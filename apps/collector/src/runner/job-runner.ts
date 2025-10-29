@@ -21,7 +21,7 @@ interface CreateJobRunnerOptions {
 export async function createJobRunner({ config, logger }: CreateJobRunnerOptions): Promise<JobRunner> {
   const id = config.runId ?? randomUUID();
   const queries = await loadQueries(config.benchmarkQuerySetPath);
-  const collector = await createCollector({ config, logger });
+  const collector = await createCollector({ config, logger, runId: id });
 
   await fs.mkdir(config.outputDir, { recursive: true });
 
