@@ -80,10 +80,14 @@ export async function createJobRunner({ config, logger }: CreateJobRunnerOptions
           // Persist results and viewpoints to storage
           try {
             const searchResults = result as SearchResult[];
+            console.log(`[DEBUG] Cast to SearchResult[], length: ${searchResults.length}`);
             
             // Insert search results
             if (searchResults.length > 0) {
-              await storage.insertSearchResults(searchResults.map(r => ({
+              console.log(`[DEBUG] About to insert ${searchResults.length} search results`);
+              console.log(`[DEBUG] First result sample:`, searchResults[0]);
+
+              const formattedResults = searchResults.map(r => ({
                 id: r.id,
                 crawlRunId: r.crawlRunId,
                 queryId: r.queryId,
@@ -99,10 +103,17 @@ export async function createJobRunner({ config, logger }: CreateJobRunnerOptions
                 rawHtmlPath: r.rawHtmlPath,
                 createdAt: new Date(r.createdAt),
                 updatedAt: new Date(r.updatedAt)
-              })));
+              }));
+
+              console.log(`[DEBUG] Formatted results sample:`, formattedResults[0]);
+              await storage.insertSearchResults(formattedResults);
+              console.log(`[DEBUG] Successfully inserted ${formattedResults.length} search results`);
+            } else {
+              console.log(`[DEBUG] No search results to insert`);
             }
 
             // Group results by engine and compute viewpoints
+            console.log(`[DEBUG] Starting viewpoint computation for ${searchResults.length} results`);
             const resultsByEngine: Record<string, SearchResult[]> = {};
             for (const sr of searchResults) {
               if (!resultsByEngine[sr.engine]) {
