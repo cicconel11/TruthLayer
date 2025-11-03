@@ -4,7 +4,7 @@ import { createInMemoryStorageClient } from "./in-memory";
 import { createPostgresStorageClient } from "./postgres-client";
 import { StorageClient } from "./types";
 
-export { createInMemoryStorageClient };
+export { createInMemoryStorageClient, createPostgresStorageClient };
 export * from "./types";
 export type { FetchAlternativeSourcesOptions } from "./types";
 export * from "./save";

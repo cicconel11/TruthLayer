@@ -294,10 +294,9 @@ export class DuckDBStorageClient implements StorageClient {
             sr.hash,
             sr.raw_html_path AS rawHtmlPath,
             sr.created_at AS createdAt,
-            sr.updated_at AS updatedAt
+            sr.updated_at AS createdAt
           FROM search_results sr
-          LEFT JOIN annotations ann ON ann.search_result_id = sr.id
-          WHERE ann.id IS NULL
+          WHERE sr.annotation_status IS NULL OR sr.annotation_status NOT IN ('OK', 'LLM_FAILED', 'SKIPPED_EMPTY', 'SKIPPED_BAD_URL')
           ${filters}
           ORDER BY sr.timestamp ASC
           ${limitClause}
@@ -1242,6 +1241,43 @@ export class DuckDBStorageClient implements StorageClient {
         version: parsedVersion,
         filePath
       };
+    } finally {
+      await closeConnection(conn);
+    }
+  }
+
+  async fetchRecentSearchResults(limit: number): Promise<SearchResult[]> {
+    const conn = await this.getConnection();
+    try {
+      await this.ensureSearchResultsTable(conn);
+
+      const rows = await all<Record<string, unknown>>(
+        conn,
+        `
+          SELECT
+            id AS id,
+            crawl_run_id AS crawlRunId,
+            query_id AS queryId,
+            engine,
+            rank,
+            title,
+            snippet,
+            url,
+            normalized_url AS normalizedUrl,
+            domain,
+            timestamp,
+            hash,
+            raw_html_path AS rawHtmlPath,
+            created_at AS createdAt,
+            updated_at AS updatedAt
+          FROM search_results
+          ORDER BY timestamp DESC
+          LIMIT ?
+        `,
+        [limit]
+      );
+
+      return rows.map((row) => SearchResultSchema.parse(row));
     } finally {
       await closeConnection(conn);
     }

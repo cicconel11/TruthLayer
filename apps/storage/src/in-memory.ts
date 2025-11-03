@@ -380,6 +380,12 @@ export function createInMemoryStorageClient(initialState?: Partial<InMemoryStora
         .sort((a, b) => b.collectedAt.getTime() - a.collectedAt.getTime());
     },
 
+    async fetchRecentSearchResults(limit: number): Promise<SearchResult[]> {
+      return state.searchResults
+        .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+        .slice(0, limit);
+    },
+
     async close(): Promise<void> {
       // no-op for in-memory storage
     }

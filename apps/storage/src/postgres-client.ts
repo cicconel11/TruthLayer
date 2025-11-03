@@ -3,8 +3,7 @@ import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import duckdb from "duckdb";
-import pg, { type FieldDef } from "pg";
-const { Pool } = pg as unknown as { Pool: typeof import("pg").Pool };
+import pg, { Pool, type FieldDef } from "pg";
 import type {
   AnnotatedResultView,
   AnnotationAggregateRecord,
@@ -506,8 +505,7 @@ export class PostgresStorageClient implements StorageClient {
           sr.created_at,
           sr.updated_at
         FROM search_results sr
-        LEFT JOIN annotations ann ON ann.search_result_id = sr.id
-        WHERE ann.id IS NULL
+        WHERE sr.annotation_status IS NULL OR sr.annotation_status NOT IN ('OK', 'LLM_FAILED', 'SKIPPED_EMPTY', 'SKIPPED_BAD_URL')
         ${filterClause}
         ORDER BY sr.timestamp ASC
         ${limitClause}
@@ -515,7 +513,7 @@ export class PostgresStorageClient implements StorageClient {
       params
     );
 
-    return rows.map((row) =>
+    return rows.map((row: any) =>
       SearchResultSchema.parse({
         id: row.id,
         crawlRunId: row.crawl_run_id,
@@ -840,7 +838,7 @@ export class PostgresStorageClient implements StorageClient {
       params
     );
 
-    return rows.map((row) =>
+    return rows.map((row: any) =>
       AnnotatedResultViewSchema.parse({
         runId: row.run_id ?? `${row.query_id}-${row.collected_at.toISOString()}`,
         batchId: row.batch_id ?? undefined,
@@ -927,7 +925,7 @@ export class PostgresStorageClient implements StorageClient {
 
     const result = await this.pool.query(query, params);
 
-    return result.rows.map((row): AnnotatedResultView => ({
+    return result.rows.map((row: any): AnnotatedResultView => ({
       runId: row.run_id || "",
       batchId: row.batch_id || "",
       annotationId: row.annotation_id,
@@ -1020,7 +1018,7 @@ export class PostgresStorageClient implements StorageClient {
       [metricType, limit]
     );
 
-    return rows.map((row) => ({
+    return rows.map((row: any) => ({
       id: row.id,
       crawlRunId: row.crawl_run_id,
       queryId: row.query_id,
@@ -1246,7 +1244,7 @@ export class PostgresStorageClient implements StorageClient {
         break;
       }
       case DatasetFormatEnum.enum.csv: {
-        const headers = fieldDefs.map((field) => field.name);
+        const headers = fieldDefs.map((field: any) => field.name);
         const effectiveHeaders = headers.length
           ? headers
           : normalizedRows.length
@@ -1256,7 +1254,7 @@ export class PostgresStorageClient implements StorageClient {
         if (effectiveHeaders.length) {
           lines.push(effectiveHeaders.join(","));
           for (const row of normalizedRows) {
-            const values = effectiveHeaders.map((header) =>
+            const values = effectiveHeaders.map((header: any) =>
               formatCsvValue((row as Record<string, unknown>)[header])
             );
             lines.push(values.join(","));
@@ -1464,7 +1462,7 @@ export class PostgresStorageClient implements StorageClient {
       params
     );
 
-    return rows.map((row) =>
+    return rows.map((row: any) =>
       AnnotationAggregateRecordSchema.parse({
         id: row.id,
         runId: row.run_id,
@@ -1551,7 +1549,7 @@ export class PostgresStorageClient implements StorageClient {
       [runId]
     );
 
-    return rows.map((row) => {
+    return rows.map((row: any) => {
       const parsed = AuditSampleSchema.parse({
         id: row.id,
         runId: row.run_id,
@@ -1685,7 +1683,7 @@ export class PostgresStorageClient implements StorageClient {
       [limit]
     );
 
-    return rows.map((row) => ({
+    return rows.map((row: any) => ({
       id: row.id,
       status: row.status as PipelineRun["status"],
       startedAt: row.started_at,
@@ -1721,7 +1719,7 @@ export class PostgresStorageClient implements StorageClient {
       [runId]
     );
 
-    return rows.map((row) => ({
+    return rows.map((row: any) => ({
       id: row.id,
       runId: row.run_id,
       stage: row.stage as PipelineStageLog["stage"],
@@ -1822,7 +1820,7 @@ export class PostgresStorageClient implements StorageClient {
       params
     );
 
-    return rows.map((row) => ({
+    return rows.map((row: any) => ({
       id: row.id,
       queryId: row.query_id,
       crawlRunId: row.crawl_run_id,
@@ -1835,6 +1833,126 @@ export class PostgresStorageClient implements StorageClient {
       createdAt: row.created_at,
       updatedAt: row.updated_at
     }));
+  }
+
+  /**
+   * Marks an annotation failure for a search result.
+   *
+   * Updates error tracking columns and increments attempt count.
+   */
+  async markAnnotationFailure({
+    queryId,
+    url,
+    engine,
+    errorCode,
+    errorMessage,
+    status
+  }: {
+    queryId: string;
+    url: string;
+    engine?: string;
+    errorCode?: string | null;
+    errorMessage?: string;
+    status: string;
+  }): Promise<void> {
+    await this.pool.query(`
+      UPDATE search_results
+      SET annotation_attempts = annotation_attempts + 1,
+          last_attempt_at = now(),
+          annotation_error_code = $4,
+          annotation_error_msg = left($5, 500),
+          annotation_status = $6
+      WHERE query_id = $1 AND url = $2 AND ($3::text IS NULL OR engine = $3)
+    `, [queryId, url, engine, errorCode, errorMessage, status]);
+  }
+
+  /**
+   * Marks an annotation success for a search result.
+   *
+   * Updates annotation source and status.
+   */
+  async markAnnotationSuccess({
+    queryId,
+    url,
+    engine,
+    source
+  }: {
+    queryId: string;
+    url: string;
+    engine?: string;
+    source: string;
+  }): Promise<void> {
+    await this.pool.query(`
+      UPDATE search_results
+      SET annotation_source = $4,
+          annotation_status = 'OK',
+          annotation_error_code = NULL,
+          annotation_error_msg = NULL
+      WHERE query_id = $1 AND url = $2 AND ($3::text IS NULL OR engine = $3)
+    `, [queryId, url, engine, source]);
+  }
+
+  async fetchRecentSearchResults(limit: number): Promise<SearchResult[]> {
+    const { rows } = await this.pool.query<{
+      id: string;
+      crawl_run_id: string | null;
+      query_id: string;
+      engine: string;
+      rank: number;
+      title: string;
+      snippet: string | null;
+      url: string;
+      normalized_url: string;
+      domain: string;
+      timestamp: Date;
+      hash: string;
+      raw_html_path: string;
+      created_at: Date;
+      updated_at: Date;
+    }>(
+      `
+        SELECT
+          id,
+          crawl_run_id,
+          query_id,
+          engine,
+          rank,
+          title,
+          snippet,
+          url,
+          normalized_url,
+          domain,
+          timestamp,
+          hash,
+          raw_html_path,
+          created_at,
+          updated_at
+        FROM search_results
+        ORDER BY timestamp DESC
+        LIMIT $1
+      `,
+      [limit]
+    );
+
+    return rows.map((row: any) =>
+      SearchResultSchema.parse({
+        id: row.id,
+        crawlRunId: row.crawl_run_id,
+        queryId: row.query_id,
+        engine: row.engine,
+        rank: row.rank,
+        title: row.title,
+        snippet: row.snippet,
+        url: row.url,
+        normalizedUrl: row.normalized_url,
+        domain: row.domain,
+        timestamp: row.timestamp,
+        hash: row.hash,
+        rawHtmlPath: row.raw_html_path,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at
+      })
+    );
   }
 
   async close(): Promise<void> {

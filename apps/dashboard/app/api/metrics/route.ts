@@ -136,14 +136,24 @@ export async function GET(request: Request) {
     }));
 
     const queryMetadata = await loadBenchmarkMetadata();
-    const filteredEntries = Object.entries(queryMetadata).filter(([id, meta]) => {
-      if (queryFilter && id !== queryFilter) return false;
-      if (topicFilter && meta.topic !== topicFilter) return false;
-      return true;
-    });
 
-    const filteredQueries: Record<string, QueryMeta> = Object.fromEntries(filteredEntries);
+    // Start with all queries from benchmark file
+    let filteredQueries: Record<string, QueryMeta> = { ...queryMetadata };
 
+    // Apply filters
+    if (queryFilter) {
+      filteredQueries = Object.fromEntries(
+        Object.entries(filteredQueries).filter(([id]) => id === queryFilter)
+      );
+    }
+
+    if (topicFilter) {
+      filteredQueries = Object.fromEntries(
+        Object.entries(filteredQueries).filter(([, meta]) => meta.topic === topicFilter)
+      );
+    }
+
+    // Add any queries from metrics that aren't in benchmark file
     for (const queryId of queriesFromMetrics) {
       if (!filteredQueries[queryId]) {
         filteredQueries[queryId] = {
@@ -151,6 +161,20 @@ export async function GET(request: Request) {
           topic: "Unknown",
           tags: []
         };
+      }
+    }
+
+    // Also add queries that have metrics data
+    for (const metricType of Object.keys(metricsByType)) {
+      for (const metric of (metricsByType as any)[metricType]) {
+        const queryId = metric.queryId;
+        if (!filteredQueries[queryId]) {
+          filteredQueries[queryId] = {
+            query: queryId,
+            topic: "Unknown",
+            tags: []
+          };
+        }
       }
     }
 
@@ -175,14 +199,27 @@ export async function GET(request: Request) {
       }
     }
 
+    // Fetch recent search results for display
+    const searchResultsQuery = await storage.fetchRecentSearchResults(50); // Get last 50 results
+    const searchResultsSerialised = searchResultsQuery.map((result) => ({
+      id: result.id,
+      queryId: result.queryId,
+      engine: result.engine,
+      title: result.title,
+      url: result.url,
+      snippet: result.snippet,
+      timestamp: result.timestamp.toISOString()
+    }));
+
     const response = {
       metrics: metricsByType,
       aggregates: aggregatesSerialised,
       queries: filteredQueries,
-      queryIds: Array.from(queriesFromMetrics),
+      queryIds: Object.keys(filteredQueries),
       engines: Array.from(new Set([...engines, ...(engineFilter ? [engineFilter] : [])])),
       runIds: runIdList,
       topics: Array.from(allTopics),
+      searchResults: searchResultsSerialised,
       generatedAt: new Date().toISOString()
     };
 

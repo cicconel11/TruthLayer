@@ -9,16 +9,17 @@ import {
   StorageClient,
   createStorageClient
 } from "@truthlayer/storage";
+import { createPostgresStorageClient } from "@truthlayer/storage";
 import { AnnotationConfig } from "../lib/config";
 import { Logger } from "../lib/logger";
 import {
   LLMAnnotationResult,
-  LLMAnnotationInput,
-  createLLMClient,
-  defaultAnnotationResult
+  LLMAnnotationInput
 } from "../services/llm-client";
 import { inferDomainType, inferFactualConsistency } from "../services/heuristics";
 import { DomainTypeEnum, FactualConsistencyEnum, SearchResult } from "@truthlayer/schema";
+// Import our new robust annotation system
+import { annotatePage } from "../../../collector/src/annotate/annotator";
 
 interface AnnotationTask {
   result: SearchResult;
@@ -112,8 +113,8 @@ export function createAnnotationRunner({
   logger,
   storage
 }: CreateAnnotationRunnerOptions): AnnotationRunner {
-  const llmClient = createLLMClient({ config, logger });
-  const storageClient = storage ?? createStorageClient({});
+  // Explicitly use Postgres storage client to ensure we have the new error tracking methods
+  const storageClient = storage ?? createPostgresStorageClient(process.env.STORAGE_URL!);
   const id = config.runId;
 
   async function ensureCacheDir() {
@@ -271,16 +272,30 @@ export function createAnnotationRunner({
       return;
     }
 
-    const input = toAnnotationInput(task);
-    const shouldSkipLLM = !input.snippet || input.snippet.trim().length === 0;
+    // Use our new robust annotation system
+    const pageText = task.result.snippet || ""; // Use snippet as page text for annotation
+    const annotationResult = await annotatePage({
+      queryId: task.result.queryId,
+      url: task.result.url,
+      title: task.result.title,
+      pageText,
+      engine: task.result.engine
+    });
 
-    const annotation: LLMAnnotationResult = shouldSkipLLM
-      ? {
-          ...defaultAnnotationResult(input, llmClient.provider),
-          domainType: inferDomainType(task.result.domain),
-          factualConsistency: inferFactualConsistency(task.result.snippet)
-        }
-      : await llmClient.annotate(input);
+    // Convert our annotation result to the expected LLMAnnotationResult format
+    const annotation: LLMAnnotationResult = {
+      domainType: annotationResult.domainType as DomainTypeEnum,
+      factualConsistency: annotationResult.factualConsistency as FactualConsistencyEnum,
+      confidence: annotationResult.confidence,
+      reasoning: annotationResult.reasoning,
+      provider: annotationResult.provider,
+      modelId: annotationResult.modelId,
+      extra: {
+        sources: annotationResult.sources,
+        chunk_count: annotationResult.chunk_count,
+        merged: annotationResult.merged
+      }
+    };
 
     const record = await createAnnotationRecord(task, annotation);
     pendingRecords.push(record);
@@ -339,7 +354,15 @@ export function createAnnotationRunner({
               try {
                 await processTask(task, aggregateMap, pendingRecords);
               } catch (error) {
-                logger.error("annotation failed", { taskId: task.result.id, error });
+                // Our new annotation system already handles error logging with structured details
+                // Just log the task ID for debugging
+                logger.error("annotation task failed", {
+                  taskId: task.result.id,
+                  queryId: task.result.queryId,
+                  url: task.result.url,
+                  engine: task.result.engine,
+                  error: error instanceof Error ? error.message : String(error)
+                });
               }
             });
           }

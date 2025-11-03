@@ -20,6 +20,7 @@
     "@types/cheerio": "^1.0.0",
     "axios": "1.7.2",
     "cheerio": "^1.1.2",
+    "openai": "^4.52.7",
     "p-queue": "8.0.1",
     "p-retry": "5.1.2",
     "p-timeout": "6.0.0",

@@ -213,6 +213,7 @@ export interface StorageClient {
   fetchAlternativeSources(options: FetchAlternativeSourcesOptions): Promise<AnnotatedResultView[]>;
   insertMetricRecords(records: MetricRecordInput[]): Promise<void>;
   fetchRecentMetricRecords(metricType: MetricType, limit: number): Promise<MetricRecordInput[]>;
+  fetchRecentSearchResults(limit: number): Promise<SearchResult[]>;
   upsertAnnotationAggregates(records: AnnotationAggregateRecordInput[]): Promise<void>;
   fetchAnnotationAggregates(options: FetchAnnotationAggregateOptions): Promise<AnnotationAggregateRecord[]>;
   exportDataset(options: DatasetExportOptions): Promise<DatasetExportResult>;

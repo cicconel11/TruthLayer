@@ -27,6 +27,16 @@ import {
 
 Chart.register(CategoryScale, LinearScale, PointElement, LineElement, Filler, Tooltip, Legend);
 
+interface SearchResult {
+  id: string;
+  queryId: string;
+  engine: string;
+  title: string;
+  url: string;
+  snippet?: string;
+  timestamp: string;
+}
+
 interface MetricsResponse {
   metrics: Record<MetricType, MetricRecord[]>;
   aggregates: AnnotationAggregate[];
@@ -35,6 +45,7 @@ interface MetricsResponse {
   engines: string[];
   runIds: string[];
   topics: string[];
+  searchResults?: SearchResult[];
   generatedAt: string;
 }
 
@@ -270,13 +281,13 @@ export function DashboardView() {
       .filter((engine): engine is string => Boolean(engine))
       .sort((a, b) => a.localeCompare(b))
   ];
-  const topicOptions = ['all', ...state.data.topics.sort((a, b) => a.localeCompare(b))];
-  const queryOptions = [
+  const topicOptions = state.data ? ['all', ...state.data.topics.sort((a, b) => a.localeCompare(b))] : ['all'];
+  const queryOptions = state.data ? [
     'all',
     ...Object.entries(state.data.queries)
       .sort(([, a], [, b]) => a.query.localeCompare(b.query))
       .map(([id]) => id)
-  ];
+  ] : ['all'];
 
   const renderChart = (id: string, title: string, metric: MetricType, dataset: DatasetPoint[], color: string) => {
     const labels = dataset.map((point) => new Date(point.collectedAt).toLocaleString());
@@ -403,6 +414,53 @@ export function DashboardView() {
     };
   });
 
+  if (state.loading && !state.data) {
+    return (
+      <main className="container">
+        <div style={{ textAlign: 'center', padding: '4rem 0' }}>
+          <h2>Loading TruthLayer dashboard...</h2>
+          <p>Fetching metrics and search results...</p>
+        </div>
+      </main>
+    );
+  }
+
+  if (state.error) {
+    return (
+      <main className="container">
+        <div style={{ textAlign: 'center', padding: '4rem 0', color: '#ef4444' }}>
+          <h2>Error loading dashboard</h2>
+          <p>{state.error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            style={{
+              marginTop: '1rem',
+              padding: '0.5rem 1rem',
+              backgroundColor: '#ef4444',
+              color: 'white',
+              border: 'none',
+              borderRadius: '0.375rem',
+              cursor: 'pointer'
+            }}
+          >
+            Retry
+          </button>
+        </div>
+      </main>
+    );
+  }
+
+  if (!state.data) {
+    return (
+      <main className="container">
+        <div style={{ textAlign: 'center', padding: '4rem 0' }}>
+          <h2>No data available</h2>
+          <p>The dashboard API returned no data. Please check your configuration.</p>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="container">
       <header className="card" style={{ marginBottom: '1.8rem' }}>
@@ -436,9 +494,9 @@ export function DashboardView() {
           </a>
         </div>
         <div className="metrics-meta">
-          <span>Last refreshed: {new Date(state.data.generatedAt).toLocaleString()}</span>
-          <span>Runs tracked: {state.data.runIds.length || '0'}</span>
-          <span>Queries covered: {state.data.queryIds.length || '0'}</span>
+          <span>Last refreshed: {state.data ? new Date(state.data.generatedAt).toLocaleString() : 'Loading...'}</span>
+          <span>Runs tracked: {state.data ? state.data.runIds.length || '0' : '0'}</span>
+          <span>Queries covered: {state.data ? state.data.queryIds.length || '0' : '0'}</span>
         </div>
       </header>
 
@@ -491,6 +549,66 @@ export function DashboardView() {
         {renderChart('domain', 'Domain Diversity', 'domain_diversity', chartData.domain, '#60a5fa')}
         {renderChart('overlap', 'Engine Overlap', 'engine_overlap', chartData.overlap, '#34d399')}
         {renderChart('factual', 'Factual Alignment', 'factual_alignment', chartData.factual, '#f97316')}
+      </section>
+
+      <section className="card" style={{ marginBottom: '1.5rem' }}>
+        <h3 style={{ marginBottom: '1rem' }}>Recent Search Results</h3>
+        <div className="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Engine</th>
+                <th>Title</th>
+                <th>URL</th>
+                <th>Query</th>
+                <th>Time</th>
+              </tr>
+            </thead>
+            <tbody>
+              {state.data?.searchResults && state.data.searchResults.length ? (
+                state.data.searchResults.map((result) => (
+                  <tr key={result.id}>
+                    <td>
+                      <span style={{
+                        display: 'inline-block',
+                        padding: '0.25rem 0.5rem',
+                        backgroundColor: result.engine === 'brave' ? '#f59e0b' :
+                                       result.engine === 'perplexity' ? '#8b5cf6' :
+                                       result.engine === 'duckduckgo' ? '#10b981' : '#6b7280',
+                        color: 'white',
+                        borderRadius: '0.25rem',
+                        fontSize: '0.75rem',
+                        fontWeight: 'bold'
+                      }}>
+                        {result.engine}
+                      </span>
+                    </td>
+                    <td style={{ maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      <a href={result.url} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6' }}>
+                        {result.title}
+                      </a>
+                    </td>
+                    <td style={{ maxWidth: '400px', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '0.875rem', color: '#6b7280' }}>
+                      {result.url}
+                    </td>
+                    <td style={{ fontSize: '0.875rem' }}>
+                      {state.data?.queries[result.queryId]?.query || result.queryId}
+                    </td>
+                    <td style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                      {new Date(result.timestamp).toLocaleString()}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={5} style={{ textAlign: 'center', padding: '2rem 0' }}>
+                    No search results available
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </section>
 
       <section className="card">
