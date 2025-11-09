@@ -17,6 +17,10 @@ const EnvSchema = z.object({
   ANTHROPIC_API_KEY: z.string().min(1).optional(),
   BRAVE_API_KEY: z.string().min(1).optional(),
   BING_API_KEY: z.string().min(1).optional(),
+  GOOGLE_API_KEY: z.string().min(1).optional(),
+  GOOGLE_CSE_ID: z.string().min(1).optional(),
+  DDG_APP_TOKEN: z.string().min(1).optional(),
+  PERPLEXITY_API_KEY: z.string().min(1).optional(),
   PROXY_URL: z.string().min(1).optional(),
   STORAGE_URL: z.string().min(1).optional(),
   BENCHMARK_QUERY_SET_PATH: z.string().min(1).default("config/benchmark-queries.json"),
@@ -90,7 +94,22 @@ function applyEnvFile() {
 export function loadEnv(): EnvConfig {
   if (!cachedEnv) {
     applyEnvFile();
-    cachedEnv = EnvSchema.parse(process.env);
+    
+    try {
+      cachedEnv = EnvSchema.parse(process.env);
+    } catch (error) {
+      if (process.env.NODE_ENV === "production") {
+        console.error("❌ Environment validation failed in production mode:");
+        console.error(error);
+        process.exit(1);
+      }
+      throw error;
+    }
+    
+    // Warn about missing optional but recommended keys
+    if (!cachedEnv.OPENAI_API_KEY && !cachedEnv.ANTHROPIC_API_KEY) {
+      console.warn("⚠️  No LLM API keys configured - annotations will use heuristics only");
+    }
   }
 
   return cachedEnv;

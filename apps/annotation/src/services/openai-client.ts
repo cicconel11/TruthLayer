@@ -33,9 +33,10 @@ export function createOpenAIAnnotator({
 }: {
   config: AnnotationConfig;
   logger: Logger;
-}): LLMClient {
+}): LLMClient | null {
   if (!config.openaiApiKey) {
-    throw new Error("OPENAI_API_KEY is required for OpenAI annotations");
+    logger.warn("OPENAI_API_KEY not configured - OpenAI annotator unavailable");
+    return null;
   }
 
   const client = new OpenAI({ apiKey: config.openaiApiKey });
@@ -47,9 +48,9 @@ export function createOpenAIAnnotator({
     const prompt = buildPrompt(input);
 
     try {
-      const response = await client.responses.create({
+      const response = await client.chat.completions.create({
         model: config.model,
-        input: [
+        messages: [
           {
             role: "system",
             content: buildSystemPrompt(config.promptVersion)
@@ -59,11 +60,11 @@ export function createOpenAIAnnotator({
             content: prompt
           }
         ],
-        response_format: { type: "json_object" }
+        response_format: { type: "json_object" },
+        temperature: 0.3
       });
 
-      const textOutput = response.output_text ??
-        (response.output?.map((item) => (item.content ?? []).map((content) => (content as any).text).join(" ").trim()).join(" ") ?? "");
+      const textOutput = response.choices[0]?.message?.content ?? "";
 
       const parsed = textOutput ? extractJsonFromText(textOutput) : {};
 
@@ -79,11 +80,11 @@ export function createOpenAIAnnotator({
                 : null,
           reasoning: typeof parsed.reasoning === "string" ? parsed.reasoning : undefined,
           provider: "openai",
-          modelId: response.model ?? config.model,
+          modelId: response.model,
           raw: {
             parsed,
             model: response.model,
-            id: (response as { id?: string }).id
+            id: response.id
           }
         },
         fallbackDomain,

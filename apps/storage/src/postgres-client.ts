@@ -3,7 +3,10 @@ import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import duckdb from "duckdb";
-import pg, { Pool, type FieldDef } from "pg";
+import pg from "pg";
+const { Pool } = pg;
+type FieldDef = pg.FieldDef;
+type PoolType = InstanceType<typeof Pool>;
 import type {
   AnnotatedResultView,
   AnnotationAggregateRecord,
@@ -225,7 +228,7 @@ function formatCsvValue(value: unknown): string {
 }
 
 export class PostgresStorageClient implements StorageClient {
-  private readonly pool: Pool;
+  private readonly pool: PoolType;
   private metricTableEnsured = false;
   private aggregateTableEnsured = false;
   private annotationTableEnsured = false;
@@ -505,7 +508,8 @@ export class PostgresStorageClient implements StorageClient {
           sr.created_at,
           sr.updated_at
         FROM search_results sr
-        WHERE sr.annotation_status IS NULL OR sr.annotation_status NOT IN ('OK', 'LLM_FAILED', 'SKIPPED_EMPTY', 'SKIPPED_BAD_URL')
+        LEFT JOIN annotations a ON sr.id = a.search_result_id
+        WHERE a.id IS NULL
         ${filterClause}
         ORDER BY sr.timestamp ASC
         ${limitClause}
@@ -1205,7 +1209,7 @@ export class PostgresStorageClient implements StorageClient {
 
     const queryParams = [...params];
     const queryResult = await this.pool.query<Record<string, unknown>>(query, queryParams);
-    const normalizedRows = queryResult.rows.map((row) => normalizeRow(row));
+    const normalizedRows = queryResult.rows.map((row: Record<string, unknown>) => normalizeRow(row));
     const fieldDefs = queryResult.fields ?? [];
 
     const summaryParams = [...params];
@@ -1264,7 +1268,7 @@ export class PostgresStorageClient implements StorageClient {
         break;
       }
       case DatasetFormatEnum.enum.json: {
-        const jsonLines = normalizedRows.map((row) => JSON.stringify(row)).join("\n");
+        const jsonLines = normalizedRows.map((row: Record<string, unknown>) => JSON.stringify(row)).join("\n");
         await fs.writeFile(filePath, jsonLines ? `${jsonLines}\n` : "");
         break;
       }

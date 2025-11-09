@@ -199,9 +199,25 @@ export async function GET(request: Request) {
       }
     }
 
-    // Fetch recent search results for display
-    const searchResultsQuery = await storage.fetchRecentSearchResults(50); // Get last 50 results
-    const searchResultsSerialised = searchResultsQuery.map((result) => ({
+    // Fetch recent search results for display - only show results that match current query mappings
+    // Filter to only show results from the last 7 days to avoid showing old results from before query remapping
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const currentQueryIds = Object.keys(filteredQueries);
+    const searchResultsQuery = await storage.fetchPendingAnnotations({
+      queryIds: currentQueryIds.length > 0 ? currentQueryIds : undefined,
+      limit: 50
+    });
+
+    // Filter to only show results from recent collections (last 7 days)
+    // This ensures we don't show old results from before query IDs were remapped
+    const recentResults = searchResultsQuery.filter((result) => {
+      const resultDate = result.timestamp;
+      return resultDate >= sevenDaysAgo;
+    });
+
+    const searchResultsSerialised = recentResults.map((result) => ({
       id: result.id,
       queryId: result.queryId,
       engine: result.engine,

@@ -30,17 +30,18 @@ TruthLayer captures and analyzes search engine and AI-generated results to expos
 ### **Fully Operational**
 - ✅ **Collector Service** - Multi-engine scraping (Google, Bing, Perplexity, Brave, DuckDuckGo)
 - ✅ **Storage Layer** - Postgres/DuckDB support with automatic table creation
-- ✅ **Annotation Pipeline** - Mock annotations working (OpenAI integration scaffolded)
+- ✅ **Annotation Pipeline** - OpenAI integration with batch processing, retry logic, and heuristic fallback
 - ✅ **Metrics Engine** - Computing domain diversity, engine overlap, factual alignment
-- ✅ **Dashboard** - Next.js app with Chart.js visualizations
+- ✅ **Dashboard** - Next.js app with Chart.js visualizations and realtime updates (SSE)
 - ✅ **Scheduler** - Pipeline orchestration (collector → annotation → metrics)
 - ✅ **Data Exports** - CSV/Parquet exports with versioned metadata
+- ✅ **Environment Management** - Zod-validated config with production fail-fast
+- ✅ **Resilience** - Exponential backoff, rate limiting, circuit breakers
 
 ### **Partially Complete**
--  **OpenAI Integration** - Scaffolded but needs API key
 -  **Claude Bridge** - Python integration exists but untested
 -  **Manual Audit Tool** - Script exists but needs validation
--  **Monitoring Dashboard** - Page exists but needs real-time data
+-  **E2E Tests** - Structure created, needs full coverage
 
 ---
 
@@ -57,7 +58,6 @@ TruthLayer captures and analyzes search engine and AI-generated results to expos
 ```bash
 git clone https://github.com/cicconel11/TruthLayer.git
 cd TruthLayer
-git checkout mattbranch
 pnpm install
 ```
 
@@ -91,9 +91,15 @@ STORAGE_URL=postgres://postgres:postgres@localhost:5432/truthlayer
 BRAVE_API_KEY=brv-xxxxxxxxxxxxxxxxxxxxxxxx
 BING_API_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
-# LLM API Keys (optional for testing with mock data)
-# OPENAI_API_KEY=sk-...
+# LLM API Keys (recommended - graceful fallback to heuristics if missing)
+OPENAI_API_KEY=sk-proj-...
 # ANTHROPIC_API_KEY=sk-ant-...
+
+# Advanced Search Engine APIs (all optional)
+GOOGLE_API_KEY=
+GOOGLE_CSE_ID=
+DDG_APP_TOKEN=
+PERPLEXITY_API_KEY=
 
 # Collector Settings
 BENCHMARK_QUERY_SET_PATH=config/benchmark-queries.json
@@ -147,7 +153,25 @@ LOG_LEVEL=info
 pnpm --filter "./**" build
 ```
 
-### 5. Run the System
+### 5. Test Realtime Events (Optional)
+
+The dashboard supports realtime updates via Server-Sent Events (SSE). Test the connection:
+
+**Terminal 1: Start dashboard**
+```bash
+pnpm run dev:dashboard
+```
+
+**Terminal 2: Monitor events**
+```bash
+pnpm run test:sse
+# Or directly:
+# curl -N http://localhost:3000/api/metrics/stream
+```
+
+You should see heartbeat events every 20 seconds.
+
+### 6. Run the System
 
 **Option A: Full Pipeline (One-Shot)**
 ```bash
