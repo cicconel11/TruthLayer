@@ -1,0 +1,21 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "declaration": true,
+    "declarationMap": true
+  },
+  "files": [],
+  "references": [
+    { "path": "./packages/config" },
+    { "path": "./packages/schema" },
+    { "path": "./packages/events" },
+    { "path": "./packages/tests-e2e" },
+    { "path": "./apps/annotation" },
+    { "path": "./apps/collector" },
+    { "path": "./apps/dashboard" },
+    { "path": "./apps/metrics" },
+    { "path": "./apps/scheduler" },
+    { "path": "./apps/storage" }
+  ]
+}

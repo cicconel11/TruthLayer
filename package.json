@@ -12,11 +12,33 @@
     "build": "pnpm -r run build",
     "lint": "pnpm -r run lint",
     "test": "pnpm -r run test",
+    "test:unit": "vitest --run packages/tests-e2e/src/unit",
+    "test:int": "vitest --run packages/tests-e2e/src/int",
+    "test:ui": "playwright test --reporter=line",
+    "test:e2e": "pnpm run test:unit && pnpm run test:int",
+    "test:sse": "bash scripts/test-sse.sh",
+    "test:watch": "vitest packages/tests-e2e/src",
+    "test:all": "pnpm run test:unit && pnpm run test:int && pnpm run test:ui",
+    "typecheck": "tsc -b",
+    "dev": "pnpm run dev:dashboard",
     "dev:collector": "pnpm --filter @truthlayer/collector dev",
-    "dev:dashboard": "pnpm --filter @truthlayer/dashboard dev"
+    "dev:dashboard": "pnpm --filter @truthlayer/dashboard dev",
+    "start:dev": "concurrently -n COLLECTOR,DASHBOARD \"pnpm run dev:collector\" \"pnpm run dev:dashboard\""
   },
   "engines": {
     "node": ">=18.18.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.1",
+    "autocannon": "^8.0.0",
+    "concurrently": "^9.2.1",
+    "eventsource": "^4.0.0",
+    "nock": "^14.0.10",
+    "p-limit": "^7.2.0",
+    "supertest": "^7.1.4",
+    "ts-node": "10.9.2",
+    "tsx": "^4.20.6",
+    "typescript": "5.4.5",
+    "vitest": "1.6.0"
   }
 }
-

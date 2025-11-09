@@ -296,7 +296,8 @@ export class DuckDBStorageClient implements StorageClient {
             sr.created_at AS createdAt,
             sr.updated_at AS createdAt
           FROM search_results sr
-          WHERE sr.annotation_status IS NULL OR sr.annotation_status NOT IN ('OK', 'LLM_FAILED', 'SKIPPED_EMPTY', 'SKIPPED_BAD_URL')
+          LEFT JOIN annotations a ON sr.id = a.search_result_id
+          WHERE a.id IS NULL
           ${filters}
           ORDER BY sr.timestamp ASC
           ${limitClause}

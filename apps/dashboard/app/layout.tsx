@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { RealtimeProvider } from "../components/RealtimeProvider";
 
 export const metadata: Metadata = {
   title: "TruthLayer Metrics Dashboard",
@@ -13,7 +14,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <RealtimeProvider enabled={true} fallbackToPolling={true}>
+          {children}
+        </RealtimeProvider>
+      </body>
     </html>
   );
 }

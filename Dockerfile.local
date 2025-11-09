@@ -1,0 +1,64 @@
+# syntax=docker/dockerfile:1.7
+
+# References:
+# - pnpm in Docker (workspace-aware caching): https://pnpm.io/docker
+# - Next.js Docker deploy guidance: https://nextjs.org/docs/app/building-your-application/deploying#docker
+# - Corepack for package manager activation: https://nodejs.org/api/corepack.html
+
+ARG NODE_VERSION=20.12.2
+
+FROM node:${NODE_VERSION}-slim AS base
+ENV NODE_ENV=production
+WORKDIR /app
+
+# Enable pnpm via corepack and set a deterministic store
+RUN corepack enable \
+  && corepack prepare pnpm@8 --activate \
+  && pnpm config set store-dir /pnpm-store
+
+# 1) Prime deps layer: copy lockfile/workspace + package manifests only
+#    This keeps dependency caching stable across source changes
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+# Copy workspace package manifests (apps + packages)
+COPY packages/*/package.json packages/*/
+COPY apps/*/package.json apps/*/
+
+# Pre-fetch dependencies into virtual store (no node_modules yet)
+RUN pnpm fetch --prod --recursive
+
+# 2) Copy full source
+COPY . .
+
+# 3) Install using offline cache created by `pnpm fetch`
+RUN pnpm install -r --offline --prod
+
+# 4) Build all workspaces (adjust if you want to build a subset)
+RUN pnpm --filter "./**" build || true
+
+# --- Runtime image ---
+FROM node:${NODE_VERSION}-slim AS runtime
+ENV NODE_ENV=production
+WORKDIR /app
+
+# Enable pnpm in runtime too (for script orchestration across workspaces)
+RUN corepack enable \
+  && corepack prepare pnpm@8 --activate \
+  && pnpm config set store-dir /pnpm-store
+
+# Copy workspace root and built outputs
+COPY --from=base /app /app
+
+# Default values; override with `--build-arg` or `-e` as needed
+ARG APP=@truthlayer/dashboard
+ENV APP=${APP}
+ENV PORT=3000
+EXPOSE 3000
+
+# You can override CMD at runtime to run another app, e.g. collector or metrics
+# Examples:
+# - Dashboard: docker run -p 3000:3000 IMAGE
+# - Collector: docker run --env APP=@truthlayer/collector IMAGE pnpm --filter @truthlayer/collector start
+# - Metrics:   docker run --env APP=@truthlayer/metrics IMAGE pnpm --filter @truthlayer/metrics start
+
+# Default: run dashboard in dev if no production start script exists
+CMD ["bash", "-lc", "pnpm --filter ${APP} start || pnpm --filter ${APP} dev"]

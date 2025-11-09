@@ -1,4 +1,5 @@
 import type { AnnotationRecord } from "@truthlayer/schema";
+import { FactualConsistencyEnum } from "@truthlayer/schema";
 import { AnnotationConfig } from "../lib/config";
 import { Logger } from "../lib/logger";
 import { coerceDomainType, coerceFactualConsistency, inferDomainType } from "./heuristics";
@@ -32,11 +33,11 @@ export interface LLMClient {
   provider: "openai" | "claude";
 }
 
-function resolveProvider(config: AnnotationConfig): "openai" | "claude" {
+function resolveProvider(config: AnnotationConfig): "openai" | "claude" | null {
   if (config.provider === "auto") {
     if (config.openaiApiKey) return "openai";
     if (config.anthropicApiKey) return "claude";
-    throw new Error("No API keys available for auto provider selection");
+    return null;
   }
   return config.provider;
 }
@@ -47,8 +48,13 @@ export function createLLMClient({
 }: {
   config: AnnotationConfig;
   logger: Logger;
-}): LLMClient {
+}): LLMClient | null {
   const provider = resolveProvider(config);
+  
+  if (!provider) {
+    logger.warn("No LLM provider configured - will use heuristic annotations only");
+    return null;
+  }
 
   if (provider === "claude") {
     return createClaudeBridgeAnnotator({ config, logger });
