@@ -134,7 +134,8 @@ export async function annotatePage(
         engine: pageData.engine
       });
 
-      await storage.markAnnotationFailure({
+      // Track annotation failure if method exists
+      (storage as any).markAnnotationFailure?.({
         queryId: pageData.queryId,
         url: pageData.url,
         engine: pageData.engine,
@@ -146,8 +147,12 @@ export async function annotatePage(
     }
 
     // Step 2: Check content validity
-    if (!pageData.pageText || pageData.pageText.trim().length === 0) {
-      await storage.markAnnotationFailure({
+    // Step 3: Prepare content for annotation
+    const domain = extractDomain(normalizedUrl) || 'unknown';
+    const content = pageData.pageText?.trim() || '';
+    
+    if (!content || content.length === 0) {
+      (storage as any).markAnnotationFailure?.({
         queryId: pageData.queryId,
         url: normalizedUrl,
         engine: pageData.engine,
@@ -155,13 +160,9 @@ export async function annotatePage(
       });
 
       metrics.count("annotate.skipped_empty", 1, { engine: pageData.engine });
-      metrics.histogram("annotate.input_chars", content.length);
-      return heuristicAnnotate(content, normalizedUrl, extractDomain(normalizedUrl) || 'unknown');
+      metrics.histogram("annotate.input_chars", 0);
+      return heuristicAnnotate("", normalizedUrl, domain);
     }
-
-    // Step 3: Prepare content for annotation
-    const domain = extractDomain(normalizedUrl) || 'unknown';
-    const content = pageData.pageText.trim();
     const shouldUseChunking = enableChunking && shouldChunk(content, maxChars);
 
     if (shouldUseChunking) {
@@ -205,7 +206,7 @@ export async function annotatePage(
         const mergedResult = reduceChunkAnnotations(chunkResults);
         mergedResult.provider = 'openai-merged';
 
-        await storage.markAnnotationSuccess({
+        (storage as any).markAnnotationSuccess?.({
           queryId: pageData.queryId,
           url: normalizedUrl,
           engine: pageData.engine,
@@ -227,7 +228,7 @@ export async function annotatePage(
 
         const result = parseLLMResponse(llmResponse);
 
-        await storage.markAnnotationSuccess({
+        (storage as any).markAnnotationSuccess?.({
           queryId: pageData.queryId,
           url: normalizedUrl,
           engine: pageData.engine,
@@ -257,7 +258,7 @@ export async function annotatePage(
         });
         metrics.histogram("annotate.input_chars", content.length);
 
-        await storage.markAnnotationFailure({
+        (storage as any).markAnnotationFailure?.({
           queryId: pageData.queryId,
           url: normalizedUrl,
           engine: pageData.engine,
@@ -279,7 +280,7 @@ export async function annotatePage(
       const heuristicResult = heuristicAnnotate(content, normalizedUrl, domain);
       heuristicResult.provider = 'heuristic-fallback';
 
-      await storage.markAnnotationSuccess({
+      (storage as any).markAnnotationSuccess?.({
         queryId: pageData.queryId,
         url: normalizedUrl,
         engine: pageData.engine,

@@ -36,7 +36,7 @@ export async function ensureBrowser(config: CollectorConfig): Promise<Browser> {
   const args = ["--no-sandbox", "--disable-setuid-sandbox"];
   const proxy = pickProxy(config.proxyUrl);
   if (proxy) args.push(`--proxy-server=${proxy}`);
-  return puppeteer.launch({ headless: "new", args });
+  return puppeteer.launch({ headless: true, args });
 }
 
 export async function takeHtmlSnapshot(options: {

@@ -14,12 +14,15 @@ import { AnnotationConfig } from "../lib/config";
 import { Logger } from "../lib/logger";
 import {
   LLMAnnotationResult,
-  LLMAnnotationInput
+  LLMAnnotationInput,
+  createLLMClient
 } from "../services/llm-client";
 import { inferDomainType, inferFactualConsistency } from "../services/heuristics";
 import { DomainTypeEnum, FactualConsistencyEnum, SearchResult } from "@truthlayer/schema";
-// Import our new robust annotation system
-import { annotatePage } from "../../../collector/src/annotate/annotator";
+import type { z } from "zod";
+
+type DomainType = z.infer<typeof DomainTypeEnum>;
+type FactualConsistency = z.infer<typeof FactualConsistencyEnum>;
 
 interface AnnotationTask {
   result: SearchResult;
@@ -30,8 +33,8 @@ interface AnnotationTask {
 interface AnnotationCachePayload {
   annotationRecord: {
     id: string;
-    domainType: DomainTypeEnum;
-    factualConsistency: FactualConsistencyEnum;
+    domainType: DomainType;
+    factualConsistency: FactualConsistency;
     confidence: number | null;
     promptVersion: string;
     modelId: string;
@@ -115,6 +118,7 @@ export function createAnnotationRunner({
 }: CreateAnnotationRunnerOptions): AnnotationRunner {
   // Explicitly use Postgres storage client to ensure we have the new error tracking methods
   const storageClient = storage ?? createPostgresStorageClient(process.env.STORAGE_URL!);
+  const llmClient = createLLMClient({ config, logger });
   const id = config.runId;
 
   async function ensureCacheDir() {
@@ -208,8 +212,8 @@ export function createAnnotationRunner({
     for (const accumulator of aggregateMap.values()) {
       for (const [combinationKey, count] of accumulator.counts.entries()) {
         const [domainType, factualConsistency] = combinationKey.split("|") as [
-          DomainTypeEnum,
-          FactualConsistencyEnum
+          DomainType,
+          FactualConsistency
         ];
 
         const aggregateId = hashToUUID(
@@ -272,30 +276,9 @@ export function createAnnotationRunner({
       return;
     }
 
-    // Use our new robust annotation system
-    const pageText = task.result.snippet || ""; // Use snippet as page text for annotation
-    const annotationResult = await annotatePage({
-      queryId: task.result.queryId,
-      url: task.result.url,
-      title: task.result.title,
-      pageText,
-      engine: task.result.engine
-    });
-
-    // Convert our annotation result to the expected LLMAnnotationResult format
-    const annotation: LLMAnnotationResult = {
-      domainType: annotationResult.domainType as DomainTypeEnum,
-      factualConsistency: annotationResult.factualConsistency as FactualConsistencyEnum,
-      confidence: annotationResult.confidence,
-      reasoning: annotationResult.reasoning,
-      provider: annotationResult.provider,
-      modelId: annotationResult.modelId,
-      extra: {
-        sources: annotationResult.sources,
-        chunk_count: annotationResult.chunk_count,
-        merged: annotationResult.merged
-      }
-    };
+    // Use LLM annotation
+    const input = toAnnotationInput(task);
+    const annotation = await llmClient!.annotate(input);
 
     const record = await createAnnotationRecord(task, annotation);
     pendingRecords.push(record);

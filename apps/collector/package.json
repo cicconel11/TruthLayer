@@ -25,12 +25,14 @@
     "p-retry": "5.1.2",
     "p-timeout": "6.0.0",
     "puppeteer": "22.8.0",
+    "uuid": "^9.0.0",
     "winston": "3.13.0",
     "zod": "3.22.4"
   },
   "devDependencies": {
     "@types/node": "20.11.30",
     "@types/p-retry": "^3.0.1",
+    "@types/uuid": "^9.0.0",
     "@typescript-eslint/eslint-plugin": "7.5.0",
     "@typescript-eslint/parser": "7.5.0",
     "eslint": "8.57.0",

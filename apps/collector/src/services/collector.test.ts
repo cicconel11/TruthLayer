@@ -14,7 +14,8 @@ describe("createCollector", () => {
     const mockQuery = {
       id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
       query: "test query",
-      topic: "test"
+      topic: "test",
+      tags: []
     };
     
     const results = await collector.collect(mockQuery);
@@ -57,7 +58,8 @@ describe("createCollector", () => {
     const mockQuery = {
       id: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
       query: "another test",
-      topic: "test"
+      topic: "test",
+      tags: []
     };
     
     // Should not throw even if some engines fail

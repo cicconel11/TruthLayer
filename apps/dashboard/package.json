@@ -10,6 +10,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@truthlayer/events": "link:../../packages/events",
     "@truthlayer/schema": "link:../../packages/schema",
     "@truthlayer/storage": "link:../storage",
     "chart.js": "4.4.3",

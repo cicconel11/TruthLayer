@@ -70,8 +70,8 @@ export function createOpenAIAnnotator({
 
       const candidate = normalizeAnnotationResult({
         candidate: {
-          domainType: parsed.domain_type,
-          factualConsistency: parsed.factual_consistency,
+          domainType: parsed.domain_type as unknown,
+          factualConsistency: parsed.factual_consistency as unknown,
           confidence:
             typeof parsed.confidence === "number"
               ? parsed.confidence

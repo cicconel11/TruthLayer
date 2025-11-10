@@ -77,13 +77,17 @@ async function makeOpenAIRequest(
   prompt: string,
   model: string
 ): Promise<OpenAI.Chat.Completions.ChatCompletion> {
-  return client.chat.completions.create({
-    model,
-    messages: [{ role: "user", content: prompt }],
-    temperature: 0.1, // Low temperature for consistent results
-    max_tokens: 1000, // Limit response length
-    timeout: 30000,
-  });
+  return client.chat.completions.create(
+    {
+      model,
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.1, // Low temperature for consistent results
+      max_tokens: 1000, // Limit response length
+    },
+    {
+      timeout: 30000,
+    } as any
+  );
 }
 
 /**
@@ -113,8 +117,7 @@ export async function annotateWithOpenAI(
 
         if (!content) {
           throw Object.assign(new Error("Empty response from OpenAI"), {
-            code: "EMPTY_RESPONSE",
-            status: response.status
+            code: "EMPTY_RESPONSE"
           });
         }
 
