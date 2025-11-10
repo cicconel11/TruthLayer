@@ -137,7 +137,7 @@ export function createBingClient({ config, logger, runId }: CreateBingClientOpti
         query,
         items: rawResults,
         collectedAt,
-        rawHtmlPath: null, // API-based, no HTML
+        rawHtmlPath: "", // API-based, no HTML file
         crawlRunId: runId
       });
     } catch (error) {

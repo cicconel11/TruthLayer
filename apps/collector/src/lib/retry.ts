@@ -189,17 +189,20 @@ export async function cachedAndRetryableFetch(
     },
     {
       retries: 3,
-      onFailedAttempt: async (error, attempt) => {
-        if (shouldRetryHttpError(error as Error)) {
-          logger?.warn?.(`API attempt ${attempt} failed, will retry`, {
-            error: error instanceof Error ? error.message : String(error),
-            attempt: `${attempt}/4`,
+      onFailedAttempt: async (failedAttemptError) => {
+        const error = failedAttemptError as Error;
+        if (shouldRetryHttpError(error)) {
+          logger?.warn?.(`API attempt ${failedAttemptError.attemptNumber} failed, will retry`, {
+            error: error.message || String(failedAttemptError),
+            attempt: `${failedAttemptError.attemptNumber}/4`,
             engine,
             query
           });
+        } else {
+          // Stop retrying for non-retryable errors
+          throw failedAttemptError;
         }
-      },
-      shouldRetry: (error) => shouldRetryHttpError(error as Error)
+      }
     }
   );
 }

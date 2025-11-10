@@ -7,7 +7,7 @@ import { createBraveClient } from "./brave";
 import { createDuckDuckGoClient } from "./duckduckgo";
 
 export interface SearchEngineClient {
-  search: (query: { id: string; query: string; topic: string }) => Promise<Record<string, unknown>[]>;
+  search: (query: { id: string; query: string; topic: string; tags: string[] }) => Promise<Record<string, unknown>[]>;
 }
 
 export async function createEngineClient({

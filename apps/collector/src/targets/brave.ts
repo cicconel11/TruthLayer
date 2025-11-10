@@ -155,7 +155,7 @@ export function createBraveClient({ config, logger, runId }: CreateBraveClientOp
         query,
         items: rawResults,
         collectedAt,
-        rawHtmlPath: null, // API-based, no HTML
+        rawHtmlPath: "", // API-based, no HTML file
         crawlRunId: runId
       });
     } catch (error) {

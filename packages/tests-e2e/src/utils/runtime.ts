@@ -1,5 +1,8 @@
 import { spawn, ChildProcess } from "node:child_process";
-import EventSource from "eventsource";
+import * as EventSourceModule from "eventsource";
+
+// Handle both default and named exports from eventsource package
+const EventSourceConstructor = (EventSourceModule as any).default || (EventSourceModule as any);
 
 let dashboardProc: ChildProcess | null = null;
 let pipelineProc: ChildProcess | null = null;
@@ -69,9 +72,9 @@ export async function stopPipeline(): Promise<void> {
   }
 }
 
-export function sseClient(path: string): EventSource {
+export function sseClient(path: string): any {
   const url = `http://localhost:3000${path}`;
-  return new EventSource(url);
+  return new EventSourceConstructor(url);
 }
 
 export async function waitForDashboardReady(maxAttempts = 10): Promise<boolean> {

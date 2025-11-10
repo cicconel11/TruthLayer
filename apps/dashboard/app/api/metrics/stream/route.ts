@@ -57,8 +57,11 @@ setInterval(() => {
 }, 20000);
 
 export async function GET(request: NextRequest) {
+  let streamController: ReadableStreamDefaultController | null = null;
+  
   const stream = new ReadableStream({
     start(controller) {
+      streamController = controller;
       clients.add(controller);
       
       controller.enqueue(
@@ -82,7 +85,9 @@ export async function GET(request: NextRequest) {
       }
     },
     cancel() {
-      clients.delete(controller);
+      if (streamController) {
+        clients.delete(streamController);
+      }
     }
   });
 

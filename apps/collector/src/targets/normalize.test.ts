@@ -8,7 +8,7 @@ describe("normalizeResults", () => {
     const crawlRunId = "22222222-2222-2222-2222-222222222222";
     const results = normalizeResults({
       engine: "google",
-      query: { id: "11111111-1111-1111-1111-111111111111", query: "test", topic: "demo" },
+      query: { id: "11111111-1111-1111-1111-111111111111", query: "test", topic: "demo", tags: [] },
       collectedAt,
       rawHtmlPath: "data/raw_html/google/run-1/1111.html",
       items: [

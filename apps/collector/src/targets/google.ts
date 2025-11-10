@@ -31,7 +31,7 @@ interface GoogleSearchResponse {
 export function createGoogleClient({ config, logger, runId }: CreateGoogleClientOptions) {
   const env = loadEnv();
   const apiKey = env.GOOGLE_API_KEY;
-  const searchEngineId = env.GOOGLE_SEARCH_ENGINE_ID;
+  const searchEngineId = env.GOOGLE_CSE_ID;
 
   async function search(query: BenchmarkQuery): Promise<SearchResult[]> {
     // If API keys not configured, log warning and return empty
@@ -97,7 +97,7 @@ export function createGoogleClient({ config, logger, runId }: CreateGoogleClient
         query,
         items: rawResults,
         collectedAt,
-        rawHtmlPath: null, // API-based, no HTML
+        rawHtmlPath: "", // API-based, no HTML file
         crawlRunId: runId
       });
 
