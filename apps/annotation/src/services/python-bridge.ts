@@ -116,8 +116,8 @@ export function createClaudeBridgeAnnotator({
             : null;
       const candidate = normalizeAnnotationResult({
         candidate: {
-          domainType: annotation.domain_type,
-          factualConsistency: annotation.factual_consistency,
+          domainType: annotation.domain_type as unknown,
+          factualConsistency: annotation.factual_consistency as unknown,
           confidence,
           reasoning: annotation.reasoning,
           provider: "claude",

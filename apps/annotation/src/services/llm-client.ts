@@ -68,7 +68,10 @@ export function normalizeAnnotationResult({
   fallbackDomain,
   fallbackFactual
 }: {
-  candidate: Partial<LLMAnnotationResult>;
+  candidate: Omit<Partial<LLMAnnotationResult>, 'domainType' | 'factualConsistency'> & {
+    domainType?: unknown;
+    factualConsistency?: unknown;
+  };
   fallbackDomain: DomainType;
   fallbackFactual: FactualConsistency;
 }): LLMAnnotationResult {

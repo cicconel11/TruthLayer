@@ -156,5 +156,5 @@ export function estimateTokens(text: string): number {
  * @returns true if content should be chunked
  */
 export function shouldChunk(text: string, maxChars = 6000): boolean {
-  return text && text.length > maxChars;
+  return !!text && text.length > maxChars;
 }
