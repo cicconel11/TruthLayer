@@ -1,0 +1,319 @@
+Starting full pipeline for all benchmark queries...
+Scheduler created, triggering collection...
+{"timestamp":"2025-11-03T23:55:31.316Z","level":"\u001b[32minfo\u001b[39m","message":"scheduler pipeline starting","runId":"44ee8c60-0983-4397-a9d0-5423736adba6","startedAt":{}}
+{"timestamp":"2025-11-03T23:55:32.081Z","level":"\u001b[32minfo\u001b[39m","message":"OpenAI configuration validated successfully"}
+{"timestamp":"2025-11-03T23:55:32.081Z","level":"\u001b[32minfo\u001b[39m","message":"annotation configuration validated successfully"}
+{"timestamp":"2025-11-03T23:55:32.082Z","level":"\u001b[32minfo\u001b[39m","message":"starting collector","runId":"2cca0d06-1bc4-4fe4-9c8b-41f1ea8afa1a"}
+{"timestamp":"2025-11-03T23:55:32.083Z","level":"\u001b[32minfo\u001b[39m","message":"cache miss - collecting fresh","queryId":"11111111-1111-1111-1111-111111111111"}
+{"timestamp":"2025-11-03T23:55:32.083Z","level":"\u001b[32minfo\u001b[39m","message":"collecting","queryId":"11111111-1111-1111-1111-111111111111","engine":"google"}
+{"timestamp":"2025-11-03T23:55:32.084Z","level":"\u001b[33mwarn\u001b[39m","message":"Google API credentials not configured","engine":"google","query":"vaccines cause autism","hint":"Set GOOGLE_API_KEY and GOOGLE_SEARCH_ENGINE_ID in .env"}
+{"timestamp":"2025-11-03T23:55:32.084Z","level":"\u001b[32minfo\u001b[39m","message":"collecting","queryId":"11111111-1111-1111-1111-111111111111","engine":"bing"}
+{"timestamp":"2025-11-03T23:55:32.084Z","level":"\u001b[31merror\u001b[39m","message":"bing api key missing BING_API_KEY environment variable not set","query":"vaccines cause autism"}
+{"timestamp":"2025-11-03T23:55:32.084Z","level":"\u001b[32minfo\u001b[39m","message":"collecting","queryId":"11111111-1111-1111-1111-111111111111","engine":"perplexity"}
+{"timestamp":"2025-11-03T23:55:32.084Z","level":"\u001b[32minfo\u001b[39m","message":"collecting","queryId":"11111111-1111-1111-1111-111111111111","engine":"brave"}
+{"timestamp":"2025-11-03T23:55:32.085Z","level":"\u001b[32minfo\u001b[39m","message":"calling brave api","query":"vaccines cause autism","count":20}
+{"timestamp":"2025-11-03T23:55:32.085Z","level":"\u001b[32minfo\u001b[39m","message":"collecting","queryId":"11111111-1111-1111-1111-111111111111","engine":"duckduckgo"}
+{"timestamp":"2025-11-03T23:55:32.085Z","level":"\u001b[32minfo\u001b[39m","message":"calling duckduckgo api","query":"vaccines cause autism"}
+{"timestamp":"2025-11-03T23:55:32.093Z","level":"\u001b[32minfo\u001b[39m","message":"using cached results","queryId":"22222222-2222-2222-2222-222222222222","engineCount":29}
+{"timestamp":"2025-11-03T23:55:32.094Z","level":"\u001b[32minfo\u001b[39m","message":"using cached results","queryId":"44444444-4444-4444-4444-444444444444","engineCount":34}
+{"timestamp":"2025-11-03T23:55:32.094Z","level":"\u001b[32minfo\u001b[39m","message":"using cached results","queryId":"33333333-3333-3333-3333-333333333333","engineCount":4}
+{"timestamp":"2025-11-03T23:55:32.095Z","level":"\u001b[32minfo\u001b[39m","message":"using cached results","queryId":"55555555-5555-5555-5555-555555555555","engineCount":37}
+{"timestamp":"2025-11-03T23:55:32.300Z","level":"\u001b[32minfo\u001b[39m","message":"duckduckgo api response debug","query":"vaccines cause autism","hasAbstract":true,"hasAbstractURL":true,"relatedTopicsCount":0,"relatedTopicsType":"undefined"}
+{"timestamp":"2025-11-03T23:55:32.300Z","level":"\u001b[32minfo\u001b[39m","message":"duckduckgo api results","query":"vaccines cause autism","resultCount":1,"source":"api"}
+{"timestamp":"2025-11-03T23:55:32.300Z","level":"\u001b[32minfo\u001b[39m","message":"duckduckgo api returned insufficient results, falling back to html","query":"vaccines cause autism","apiResults":1}
+{"timestamp":"2025-11-03T23:55:32.300Z","level":"\u001b[32minfo\u001b[39m","message":"calling duckduckgo html","query":"vaccines cause autism"}
+{"timestamp":"2025-11-03T23:55:32.449Z","level":"\u001b[32minfo\u001b[39m","message":"brave api results","query":"vaccines cause autism","resultCount":20,"apiResponseSize":20,"durationMs":362,"rateLimitHits":0}
+{"timestamp":"2025-11-03T23:55:33.757Z","level":"\u001b[32minfo\u001b[39m","message":"duckduckgo html results","query":"vaccines cause autism","resultCount":10,"source":"html"}
+{"timestamp":"2025-11-03T23:55:33.761Z","level":"\u001b[32minfo\u001b[39m","message":"duckduckgo before normalization","query":"vaccines cause autism","rawResultsCount":10,"sampleUrl":"https://duckduckgo.com/l/?uddg=https%3A%2F%2Fpublichealth.jhu.edu%2F2025%2Fthe%2Devidence%2Don%2Dvaccines%2Dand%2Dautism&rut=00d738966b636195f7fa2c7be54a234d15ed1e8de506f24579c9f9ec9cdb39e1","sampleTitle":"The Evidence on Vaccines and Autism | Johns Hopkins | Bloomberg School ..."}
+{"timestamp":"2025-11-03T23:55:33.761Z","level":"\u001b[32minfo\u001b[39m","message":"duckduckgo after normalization","query":"vaccines cause autism","normalizedCount":10}
+{"timestamp":"2025-11-03T23:55:38.308Z","level":"\u001b[32minfo\u001b[39m","message":"perplexity summary extraction","query":"vaccines cause autism","hasSummary":true,"summaryLength":222,"citationsCount":0}
+{"timestamp":"2025-11-03T23:55:38.316Z","level":"\u001b[32minfo\u001b[39m","message":"extraction quality","engine":"perplexity","query":"vaccines cause autism","totalResults":4,"validUrls":4,"confidence":1,"warnings":[]}
+{"timestamp":"2025-11-03T23:55:38.532Z","level":"\u001b[32minfo\u001b[39m","message":"query collection complete","query":"vaccines cause autism","queryId":"11111111-1111-1111-1111-111111111111","engines":["perplexity","brave","duckduckgo"],"results":{"perplexity":4,"brave":20,"duckduckgo":10},"totalResults":34}
+{"timestamp":"2025-11-03T23:55:38.536Z","level":"\u001b[32minfo\u001b[39m","message":"query collected","queryId":"11111111-1111-1111-1111-111111111111","engineCount":34}
+[Storage] insertSearchResults called with 34 records
+[Storage] After dedup: 34 → 34 (removed 0)
+[Storage] Sample records: 11111111-perplexity-https://www.chop.edu/vaccine-e, 11111111-perplexity-https://www.cdc.gov/vaccine-sa, 11111111-perplexity-https://kidshealth.org/en/pare
+[Storage] Executing INSERT with 34 rows, 510 params
+[Storage] INSERT completed successfully
+{"timestamp":"2025-11-03T23:55:38.955Z","level":"\u001b[32minfo\u001b[39m","message":"viewpoints persisted","queryId":"11111111-1111-1111-1111-111111111111","engines":["perplexity","brave","duckduckgo"]}
+{"timestamp":"2025-11-03T23:55:38.957Z","level":"\u001b[32minfo\u001b[39m","message":"collection complete","cacheHits":4,"cacheMisses":1,"totalQueries":5,"cacheHitRate":"80%"}
+{"timestamp":"2025-11-03T23:55:38.957Z","level":"\u001b[32minfo\u001b[39m","message":"collector completed","runId":"2cca0d06-1bc4-4fe4-9c8b-41f1ea8afa1a"}
+node:events:485
+      throw er; // Unhandled 'error' event
+      ^
+
+error: {:shutdown, :db_termination}
+    at Parser.parseErrorMessage (/Users/louisciccone/Desktop/TruthLayer-1/node_modules/.pnpm/pg-protocol@1.10.3/node_modules/pg-protocol/dist/parser.js:285:98)
+    at Parser.handlePacket (/Users/louisciccone/Desktop/TruthLayer-1/node_modules/.pnpm/pg-protocol@1.10.3/node_modules/pg-protocol/dist/parser.js:122:29)
+    at Parser.parse (/Users/louisciccone/Desktop/TruthLayer-1/node_modules/.pnpm/pg-protocol@1.10.3/node_modules/pg-protocol/dist/parser.js:35:38)
+    at Socket.<anonymous> (/Users/louisciccone/Desktop/TruthLayer-1/node_modules/.pnpm/pg-protocol@1.10.3/node_modules/pg-protocol/dist/index.js:11:42)
+    at Socket.emit (node:events:507:28)
+    at addChunk (node:internal/streams/readable:559:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:510:3)
+    at Readable.push (node:internal/streams/readable:390:5)
+    at TCP.onStreamRead (node:internal/stream_base_commons:189:23)
+Emitted 'error' event on BoundPool instance at:
+    at Client.idleListener (/Users/louisciccone/Desktop/TruthLayer-1/node_modules/.pnpm/pg-pool@3.10.1_pg@8.11.3/node_modules/pg-pool/index.js:62:10)
+    at Client.emit (node:events:507:28)
+    at Client._handleErrorEvent (/Users/louisciccone/Desktop/TruthLayer-1/node_modules/.pnpm/pg@8.11.3/node_modules/pg/lib/client.js:341:10)
+    at Client._handleErrorMessage (/Users/louisciccone/Desktop/TruthLayer-1/node_modules/.pnpm/pg@8.11.3/node_modules/pg/lib/client.js:352:12)
+    at Connection.emit (node:events:507:28)
+    at /Users/louisciccone/Desktop/TruthLayer-1/node_modules/.pnpm/pg@8.11.3/node_modules/pg/lib/connection.js:117:12
+    at Parser.parse (/Users/louisciccone/Desktop/TruthLayer-1/node_modules/.pnpm/pg-protocol@1.10.3/node_modules/pg-protocol/dist/parser.js:36:17)
+    at Socket.<anonymous> (/Users/louisciccone/Desktop/TruthLayer-1/node_modules/.pnpm/pg-protocol@1.10.3/node_modules/pg-protocol/dist/index.js:11:42)
+    at Socket.emit (node:events:507:28)
+    at addChunk (node:internal/streams/readable:559:12) {
+  length: 56,
+  severity: 'FATAL',
+  code: 'XX000',
+  detail: undefined,
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: undefined,
+  line: undefined,
+  routine: undefined,
+  client: Client {
+    _events: [Object: null prototype] { error: [Function (anonymous)] },
+    _eventsCount: 1,
+    _maxListeners: undefined,
+    connectionParameters: ConnectionParameters {
+      user: 'postgres.gwwmazjirmgdmnrnbeyk',
+      database: 'postgres',
+      port: 5432,
+      host: 'aws-1-us-east-1.pooler.supabase.com',
+      binary: false,
+      options: undefined,
+      ssl: false,
+      client_encoding: '',
+      replication: undefined,
+      isDomainSocket: false,
+      application_name: undefined,
+      fallback_application_name: undefined,
+      statement_timeout: false,
+      lock_timeout: false,
+      idle_in_transaction_session_timeout: false,
+      query_timeout: false,
+      connect_timeout: 0
+    },
+    user: 'postgres.gwwmazjirmgdmnrnbeyk',
+    database: 'postgres',
+    port: 5432,
+    host: 'aws-1-us-east-1.pooler.supabase.com',
+    replication: undefined,
+    _Promise: [Function: Promise],
+    _types: TypeOverrides {
+      _types: {
+        getTypeParser: [Function: getTypeParser],
+        setTypeParser: [Function: setTypeParser],
+        arrayParser: { create: [Function: create] },
+        builtins: {
+          BOOL: 16,
+          BYTEA: 17,
+          CHAR: 18,
+          INT8: 20,
+          INT2: 21,
+          INT4: 23,
+          REGPROC: 24,
+          TEXT: 25,
+          OID: 26,
+          TID: 27,
+          XID: 28,
+          CID: 29,
+          JSON: 114,
+          XML: 142,
+          PG_NODE_TREE: 194,
+          SMGR: 210,
+          PATH: 602,
+          POLYGON: 604,
+          CIDR: 650,
+          FLOAT4: 700,
+          FLOAT8: 701,
+          ABSTIME: 702,
+          RELTIME: 703,
+          TINTERVAL: 704,
+          CIRCLE: 718,
+          MACADDR8: 774,
+          MONEY: 790,
+          MACADDR: 829,
+          INET: 869,
+          ACLITEM: 1033,
+          BPCHAR: 1042,
+          VARCHAR: 1043,
+          DATE: 1082,
+          TIME: 1083,
+          TIMESTAMP: 1114,
+          TIMESTAMPTZ: 1184,
+          INTERVAL: 1186,
+          TIMETZ: 1266,
+          BIT: 1560,
+          VARBIT: 1562,
+          NUMERIC: 1700,
+          REFCURSOR: 1790,
+          REGPROCEDURE: 2202,
+          REGOPER: 2203,
+          REGOPERATOR: 2204,
+          REGCLASS: 2205,
+          REGTYPE: 2206,
+          UUID: 2950,
+          TXID_SNAPSHOT: 2970,
+          PG_LSN: 3220,
+          PG_NDISTINCT: 3361,
+          PG_DEPENDENCIES: 3402,
+          TSVECTOR: 3614,
+          TSQUERY: 3615,
+          GTSVECTOR: 3642,
+          REGCONFIG: 3734,
+          REGDICTIONARY: 3769,
+          JSONB: 3802,
+          REGNAMESPACE: 4089,
+          REGROLE: 4096
+        }
+      },
+      text: {},
+      binary: {}
+    },
+    _ending: true,
+    _ended: false,
+    _connecting: false,
+    _connected: true,
+    _connectionError: false,
+    _queryable: false,
+    connection: Connection {
+      _events: [Object: null prototype] {
+        newListener: [Function (anonymous)],
+        connect: [Function (anonymous)],
+        sslconnect: [Function (anonymous)],
+        authenticationCleartextPassword: [Function: bound _handleAuthCleartextPassword],
+        authenticationMD5Password: [Function: bound _handleAuthMD5Password],
+        authenticationSASL: [Function: bound _handleAuthSASL],
+        authenticationSASLContinue: [Function: bound _handleAuthSASLContinue] AsyncFunction,
+        authenticationSASLFinal: [Function: bound _handleAuthSASLFinal],
+        backendKeyData: [Function: bound _handleBackendKeyData],
+        error: [Function: bound _handleErrorEvent],
+        errorMessage: [Function: bound _handleErrorMessage],
+        readyForQuery: [Function: bound _handleReadyForQuery],
+        notice: [Function: bound _handleNotice],
+        rowDescription: [Function: bound _handleRowDescription],
+        dataRow: [Function: bound _handleDataRow],
+        portalSuspended: [Function: bound _handlePortalSuspended],
+        emptyQuery: [Function: bound _handleEmptyQuery],
+        commandComplete: [Function: bound _handleCommandComplete],
+        parseComplete: [Function: bound _handleParseComplete],
+        copyInResponse: [Function: bound _handleCopyInResponse],
+        copyData: [Function: bound _handleCopyData],
+        notification: [Function: bound _handleNotification],
+        end: [
+          [Function: bound onceWrapper] {
+            listener: [Function (anonymous)]
+          },
+          [Function: bound onceWrapper] {
+            listener: [Function (anonymous)]
+          },
+          [Function: bound onceWrapper] {
+            listener: [Function (anonymous)]
+          }
+        ]
+      },
+      _eventsCount: 23,
+      _maxListeners: undefined,
+      stream: Socket {
+        connecting: false,
+        _hadError: false,
+        _parent: null,
+        _host: 'aws-1-us-east-1.pooler.supabase.com',
+        _closeAfterHandlingError: false,
+        _events: {
+          close: [Function (anonymous)],
+          error: [Function: reportStreamError],
+          prefinish: undefined,
+          finish: undefined,
+          drain: undefined,
+          data: [Function (anonymous)],
+          end: [ [Function: onReadableStreamEnd], [Function (anonymous)] ],
+          readable: undefined,
+          connect: undefined
+        },
+        _readableState: ReadableState {
+          highWaterMark: 65536,
+          buffer: [],
+          bufferIndex: 0,
+          length: 0,
+          pipes: [],
+          awaitDrainWriters: null,
+          Symbol(kState): 194519348
+        },
+        _writableState: WritableState {
+          highWaterMark: 65536,
+          length: 0,
+          corked: 0,
+          onwrite: [Function: bound onwrite],
+          writelen: 0,
+          bufferedIndex: 0,
+          pendingcb: 0,
+          Symbol(kState): 1091450164,
+          Symbol(kBufferedValue): null,
+          Symbol(kWriteCbValue): null,
+          Symbol(kAfterWriteTickInfoValue): null
+        },
+        allowHalfOpen: false,
+        _maxListeners: undefined,
+        _eventsCount: 4,
+        _sockname: null,
+        _pendingData: null,
+        _pendingEncoding: '',
+        server: null,
+        _server: null,
+        autoSelectFamilyAttemptedAddresses: [ '18.213.155.45:5432' ],
+        Symbol(async_id_symbol): 7211,
+        Symbol(kHandle): null,
+        Symbol(lastWriteQueueSize): 0,
+        Symbol(timeout): null,
+        Symbol(kBuffer): null,
+        Symbol(kBufferCb): null,
+        Symbol(kBufferGen): null,
+        Symbol(shapeMode): true,
+        Symbol(kCapture): false,
+        Symbol(kSetNoDelay): true,
+        Symbol(kSetKeepAlive): false,
+        Symbol(kSetKeepAliveInitialDelay): 0,
+        Symbol(kBytesRead): 1218,
+        Symbol(kBytesWritten): 38423
+      },
+      _keepAlive: false,
+      _keepAliveInitialDelayMillis: 0,
+      lastBuffer: false,
+      parsedStatements: {},
+      ssl: false,
+      _ending: true,
+      _emitMessage: false,
+      _connecting: true,
+      Symbol(shapeMode): false,
+      Symbol(kCapture): false
+    },
+    queryQueue: [],
+    binary: false,
+    processID: 201926660,
+    secretKey: -1787913347,
+    ssl: false,
+    _connectionTimeoutMillis: 0,
+    _connectionCallback: null,
+    saslSession: null,
+    release: [Function (anonymous)],
+    activeQuery: null,
+    readyForQuery: true,
+    hasExecuted: true,
+    _poolUseCount: 5,
+    Symbol(shapeMode): false,
+    Symbol(kCapture): false
+  }
+}
+
+Node.js v24.2.0

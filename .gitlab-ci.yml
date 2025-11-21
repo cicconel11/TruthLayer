@@ -1,0 +1,135 @@
+stages:
+  - build
+  - run_pipeline
+
+variables:
+  # Node.js configuration
+  NODE_VERSION: "20"
+  PNPM_VERSION: "9.12.0"
+
+  # Pipeline configuration
+  SCHEDULER_RUN_ON_START: "false"  # Don't start cron, just run once
+  FORCE_REFRESH: "false"           # Use cached results where possible
+  NODE_ENV: "production"
+
+# Build stage - cache dependencies and build artifacts
+build_truthlayer:
+  stage: build
+  image: node:${NODE_VERSION}-bookworm-slim
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq git ca-certificates curl
+    - corepack enable && corepack prepare pnpm@${PNPM_VERSION} --activate
+    - pnpm config set store-dir /tmp/.pnpm-store
+  script:
+    - echo "Building TruthLayer..."
+    - pnpm install --frozen-lockfile --loglevel warn
+    - pnpm run build
+  cache:
+    key:
+      files:
+        - pnpm-lock.yaml
+    paths:
+      - /tmp/.pnpm-store
+      - node_modules/
+      - apps/*/node_modules/
+      - packages/*/node_modules/
+  artifacts:
+    paths:
+      - apps/*/dist/
+      - packages/*/dist/
+    expire_in: 1 hour
+  only:
+    - main
+    - schedules
+
+# Run the complete TruthLayer pipeline
+run_truthlayer_pipeline:
+  stage: run_pipeline
+  image: node:${NODE_VERSION}-bookworm-slim
+  dependencies:
+    - build_truthlayer
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq git ca-certificates curl wget gnupg
+    - |
+      # Install Google Chrome for Puppeteer (needed for some scrapers)
+      wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add -
+      echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list
+      apt-get update -qq && apt-get install -y -qq google-chrome-stable fonts-liberation libasound2 libatk-bridge2.0-0 libatk1.0-0 libatspi2.0-0 libcups2 libdbus-1-3 libdrm2 libgtk-3-0 libnspr4 libnss3 libx11-xcb1 libxcomposite1 libxdamage1 libxrandr2 libxss1 libxtst6 xdg-utils
+    - corepack enable && corepack prepare pnpm@${PNPM_VERSION} --activate
+    - pnpm config set store-dir /tmp/.pnpm-store
+  script:
+    - echo "Starting TruthLayer pipeline run..."
+    - |
+      # Set up data directories
+      mkdir -p data/serp data/cache/annotation data/metrics data/parquet reports
+
+      # Copy built artifacts from build stage
+      cp -r apps/*/dist/ apps/ 2>/dev/null || true
+      cp -r packages/*/dist/ packages/ 2>/dev/null || true
+
+      # Run the scheduler pipeline once
+      echo "Running TruthLayer pipeline..."
+      timeout 1800 node -e "
+      import('./apps/scheduler/dist/index.js').then(async (m) => {
+        console.log('Running TruthLayer pipeline...');
+        try {
+          const app = await m.createSchedulerApp();
+          // Use the trigger method to run pipeline once instead of starting cron
+          await app.trigger();
+          console.log('Pipeline completed successfully!');
+        } catch (error) {
+          console.error('Pipeline failed:', error.message);
+          process.exit(1);
+        }
+      }).catch(err => {
+        console.error('Scheduler import error:', err.message);
+        process.exit(1);
+      });
+      "
+  cache:
+    key:
+      files:
+        - pnpm-lock.yaml
+    paths:
+      - /tmp/.pnpm-store
+  artifacts:
+    paths:
+      - data/
+      - reports/
+    expire_in: 7 days
+    when: always
+  only:
+    - main
+    - schedules
+
+# Scheduled pipeline runs
+run_hourly_pipeline:
+  extends: run_truthlayer_pipeline
+  only:
+    refs:
+      - schedules
+  variables:
+    SCHEDULER_CRON_EXPRESSION: "0 * * * *"  # Every hour
+  except:
+    variables:
+      - $SCHEDULER_FREQUENCY != "hourly"
+
+run_daily_pipeline:
+  extends: run_truthlayer_pipeline
+  only:
+    refs:
+      - schedules
+  variables:
+    SCHEDULER_CRON_EXPRESSION: "0 2 * * *"  # Daily at 2 AM
+  except:
+    variables:
+      - $SCHEDULER_FREQUENCY != "daily"
+
+# Manual trigger for testing
+run_manual_pipeline:
+  extends: run_truthlayer_pipeline
+  when: manual
+  only:
+    - main
+  variables:
+    FORCE_REFRESH: "true"  # Force fresh data collection for manual runs
