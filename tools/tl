@@ -1,0 +1,116 @@
+#!/usr/bin/env node
+/**
+ * TruthLayer CLI - Command-line interface for TruthLayer operations
+ * 
+ * Usage:
+ *   ./tools/tl run          # Runs scheduler once
+ *   ./tools/tl fetch        # Fetches pages for the last run
+ *   ./tools/tl e2e          # Executes run-e2e-test.ts
+ *   ./tools/tl db:check     # Runs a quick Supabase DB connection test
+ */
+
+import { spawn } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const projectRoot = path.resolve(__dirname, "..");
+
+const command = process.argv[2];
+
+if (!command) {
+  console.error("Usage: ./tools/tl <command>");
+  console.error("\nCommands:");
+  console.error("  run              Run scheduler once");
+  console.error("  fetch            Fetch pages for the last run");
+  console.error("  e2e              Execute end-to-end test");
+  console.error("  db:check         Test Supabase database connection");
+  console.error("  bias:run [topic] Run bias analysis for topic(s)");
+  process.exit(1);
+}
+
+async function runCommand(cmd: string, args: string[]) {
+  return new Promise<void>((resolve, reject) => {
+    const child = spawn(cmd, args, {
+      stdio: "inherit",
+      cwd: projectRoot,
+      shell: true
+    });
+
+    child.on("error", (error) => {
+      reject(error);
+    });
+
+    child.on("exit", (code) => {
+      if (code === 0) {
+        resolve();
+      } else {
+        reject(new Error(`Command failed with exit code ${code}`));
+      }
+    });
+  });
+}
+
+async function main() {
+  try {
+    switch (command) {
+      case "run": {
+        console.log("🚀 Running TruthLayer scheduler...\n");
+        await runCommand("tsx", ["apps/scheduler/src/index.ts"]);
+        break;
+      }
+
+      case "fetch": {
+        console.log("📥 Fetching pages for the last run...\n");
+        // This would need to be implemented to fetch pages for the most recent search_run
+        // For now, we'll provide a placeholder
+        console.error("⚠️  Page fetching for last run is not yet implemented.");
+        console.error("   Use the scheduler pipeline which includes page fetching automatically.");
+        process.exit(1);
+        break;
+      }
+
+      case "e2e": {
+        console.log("🧪 Running end-to-end test...\n");
+        await runCommand("tsx", ["scripts/run-e2e-test.ts"]);
+        break;
+      }
+
+      case "db:check": {
+        console.log("🔍 Checking Supabase database connection...\n");
+        await runCommand("tsx", ["scripts/test-db-connection.ts"]);
+        break;
+      }
+
+      case "bias:run": {
+        const topicId = process.argv[3];
+        console.log("🔍 Running bias analysis...\n");
+        if (topicId) {
+          console.log(`   Topic ID: ${topicId}\n`);
+        }
+        await runCommand("tsx", ["scripts/run-bias-analysis.ts", topicId].filter(Boolean));
+        break;
+      }
+
+      default: {
+        console.error(`Unknown command: ${command}`);
+        console.error("\nAvailable commands: run, fetch, e2e, db:check, bias:run [topicId]");
+        process.exit(1);
+      }
+    }
+  } catch (error) {
+    if (error instanceof Error) {
+      console.error(`\n❌ Error: ${error.message}`);
+    } else {
+      console.error(`\n❌ Error: ${String(error)}`);
+    }
+    process.exit(1);
+  }
+}
+
+main().catch((error) => {
+  console.error("Unhandled error:", error);
+  process.exit(1);
+});
+

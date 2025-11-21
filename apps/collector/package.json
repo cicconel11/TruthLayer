@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@truthlayer/config": "link:../../packages/config",
+    "@truthlayer/core": "link:../../packages/core",
     "@truthlayer/schema": "link:../../packages/schema",
     "@truthlayer/storage": "link:../storage",
     "@types/cheerio": "^1.0.0",

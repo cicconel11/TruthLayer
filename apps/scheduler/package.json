@@ -16,6 +16,7 @@
     "@truthlayer/annotation": "link:../annotation",
     "@truthlayer/collector": "link:../collector",
     "@truthlayer/config": "link:../../packages/config",
+    "@truthlayer/core": "link:../../packages/core",
     "@truthlayer/schema": "link:../../packages/schema",
     "@truthlayer/storage": "link:../storage",
     "@truthlayer/metrics": "link:../metrics",

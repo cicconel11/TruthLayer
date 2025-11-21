@@ -16,6 +16,8 @@ import {
   PipelineStageLogInput,
   AuditSampleRecordInput
 } from "@truthlayer/storage";
+import { createSearchRun, insertSerpResult } from "@truthlayer/core";
+import { fetchPagesAndCreateSnapshots } from "@truthlayer/collector";
 import { SchedulerConfig } from "../lib/config";
 import { Logger } from "../lib/logger";
 import { sanitizeLogMeta } from "../lib/sanitize";
@@ -284,6 +286,185 @@ async function ingestCollectorOutputs(
       } catch (insertError) {
         console.error(`[Scheduler] insertSearchResults failed:`, insertError);
         throw insertError;
+      }
+
+      // Supabase integration: Write to new schema tables (coexists with existing StorageClient writes)
+      try {
+        // Load benchmark queries to map queryId to query text
+        const benchmarkQueriesPath = path.resolve(process.cwd(), "config/benchmark-queries.json");
+        let queryMap = new Map<string, string>();
+        try {
+          const queriesJson = await fs.readFile(benchmarkQueriesPath, "utf-8");
+          const queries = BenchmarkQuerySetSchema.parse(JSON.parse(queriesJson));
+          queries.forEach(q => queryMap.set(q.id, q.query));
+        } catch (err) {
+          logger.warn("supabase integration", sanitizeLogMeta({
+            message: "failed to load benchmark queries for query text mapping",
+            error: err instanceof Error ? err.message : String(err)
+          }));
+        }
+
+        // Create search_runs for each unique (query, engine) combination
+        const searchRunMap = new Map<string, number>(); // key: `${queryId}|${engine}`, value: search_runs.id
+        const uniqueQueryEnginePairs = new Set<string>();
+        
+        for (const result of dedupedResults) {
+          const key = `${result.queryId}|${result.engine}`;
+          uniqueQueryEnginePairs.add(key);
+        }
+
+        for (const key of uniqueQueryEnginePairs) {
+          const [queryId, engine] = key.split("|");
+          const queryText = queryMap.get(queryId) || `Query ${queryId}`; // Fallback if query not found
+          
+          try {
+            const searchRun = await createSearchRun({
+              engine,
+              topicId: null,
+              locale: "en-US",
+              query: queryText
+            });
+            searchRunMap.set(key, searchRun.id);
+            logger.debug("supabase integration", sanitizeLogMeta({
+              message: "created search_run",
+              runId: searchRun.id,
+              queryId,
+              engine
+            }));
+          } catch (err) {
+            logger.warn("supabase integration", sanitizeLogMeta({
+              message: "failed to create search_run",
+              queryId,
+              engine,
+              error: err instanceof Error ? err.message : String(err)
+            }));
+            // Continue with other runs even if one fails
+          }
+        }
+
+        // Insert serp_results for each search result
+        let serpResultsInserted = 0;
+        let serpResultsFailed = 0;
+        const uniqueUrls = new Set<string>();
+        const serpCountsByQuery = new Map<string, number>(); // queryId -> count
+
+        for (const result of dedupedResults) {
+          const key = `${result.queryId}|${result.engine}`;
+          const runId = searchRunMap.get(key);
+          
+          // Track SERP results per query
+          const currentCount = serpCountsByQuery.get(result.queryId) || 0;
+          serpCountsByQuery.set(result.queryId, currentCount + 1);
+          
+          if (!runId) {
+            logger.warn("supabase integration", sanitizeLogMeta({
+              message: "skipping serp_result - no search_run found",
+              queryId: result.queryId,
+              engine: result.engine
+            }));
+            serpResultsFailed++;
+            continue;
+          }
+
+          try {
+            // Determine result type - default to "organic"
+            // In the future, this could be enhanced to detect ads/sponsored results
+            // from the SearchResult metadata or other fields
+            let resultType = "organic";
+            
+            // Determine if ad - for now, default to false
+            // This could be enhanced to check for ad indicators in the future
+            const isAd = false;
+
+            await insertSerpResult({
+              runId,
+              rank: result.rank,
+              resultType,
+              title: result.title,
+              url: result.url,
+              snippet: result.snippet || "",
+              isAd
+            });
+
+            serpResultsInserted++;
+            uniqueUrls.add(result.url);
+          } catch (err) {
+            serpResultsFailed++;
+            logger.warn("supabase integration", sanitizeLogMeta({
+              message: "failed to insert serp_result",
+              runId,
+              url: result.url,
+              error: err instanceof Error ? err.message : String(err)
+            }));
+            // Continue with other results even if one fails
+          }
+        }
+
+        // Log SERP results per query
+        for (const [queryId, count] of serpCountsByQuery.entries()) {
+          logger.info("supabase integration", sanitizeLogMeta({
+            message: "SERP results found per query",
+            queryId,
+            serpResults: count
+          }));
+        }
+
+        logger.info("supabase integration", sanitizeLogMeta({
+          message: "serp_results insertion completed",
+          inserted: serpResultsInserted,
+          failed: serpResultsFailed,
+          totalRuns: searchRunMap.size
+        }));
+
+        // Fetch pages and create snapshots
+        let pageFetchResult: { successCount: number; failureCount: number } | null = null;
+        if (uniqueUrls.size > 0) {
+          try {
+            logger.info("supabase integration", sanitizeLogMeta({
+              message: "starting page fetching",
+              urlCount: uniqueUrls.size
+            }));
+            
+            pageFetchResult = await fetchPagesAndCreateSnapshots(Array.from(uniqueUrls), {
+              concurrency: 5,
+              timeoutMs: 30000,
+              maxRetries: 3,
+              logger
+            });
+            
+            logger.info("supabase integration", sanitizeLogMeta({
+              message: "page fetching completed",
+              successCount: pageFetchResult.successCount,
+              failureCount: pageFetchResult.failureCount
+            }));
+          } catch (err) {
+            logger.warn("supabase integration", sanitizeLogMeta({
+              message: "page fetching failed",
+              error: err instanceof Error ? err.message : String(err)
+            }));
+            // Don't throw - page fetching is non-critical
+          }
+        }
+
+        // Print summary
+        console.log("\n✔ search run completed");
+        console.log(`  → SERP results: ${serpResultsInserted}`);
+        if (pageFetchResult) {
+          console.log(`  → pages crawled: ${pageFetchResult.successCount}`);
+          console.log(`  → snapshots created: ${pageFetchResult.successCount}`);
+          console.log(`  → failures: ${serpResultsFailed + pageFetchResult.failureCount}`);
+        } else {
+          console.log(`  → pages crawled: 0 (skipped)`);
+          console.log(`  → snapshots created: 0`);
+          console.log(`  → failures: ${serpResultsFailed}`);
+        }
+        console.log();
+      } catch (supabaseError) {
+        // Log but don't throw - Supabase integration is additive, shouldn't break existing pipeline
+        logger.warn("supabase integration", sanitizeLogMeta({
+          message: "supabase integration encountered errors but continuing",
+          error: supabaseError instanceof Error ? supabaseError.message : String(supabaseError)
+        }));
       }
       
       logger.info(

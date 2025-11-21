@@ -23,6 +23,7 @@ const EnvSchema = z.object({
   PERPLEXITY_API_KEY: z.string().min(1).optional(),
   PROXY_URL: z.string().min(1).optional(),
   STORAGE_URL: z.string().min(1).optional(),
+  DATABASE_URL: z.string().min(1).optional(),
   BENCHMARK_QUERY_SET_PATH: z.string().min(1).default("config/benchmark-queries.json"),
   COLLECTOR_OUTPUT_DIR: z.string().min(1).default("data/serp"),
   COLLECTOR_MAX_RESULTS: z.coerce.number().int().min(1).max(100).optional(),

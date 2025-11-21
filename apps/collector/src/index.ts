@@ -3,6 +3,7 @@ import path from "node:path";
 import { createCollectorApp } from "./launcher";
 
 export { createCollectorApp } from "./launcher";
+export { fetchPagesAndCreateSnapshots } from "./services/page-fetcher";
 
 async function main() {
   const app = await createCollectorApp();

@@ -1,0 +1,36 @@
+[
+  {
+    "id": "climate_change_policy",
+    "label": "Climate change policy",
+    "queries": [
+      "climate change is a hoax",
+      "climate change policy impact on economy",
+      "renewable energy subsidies pros and cons"
+    ],
+    "engines": ["google", "brave", "duckduckgo"],
+    "locale": "en-US"
+  },
+  {
+    "id": "vaccine_effectiveness",
+    "label": "Vaccine effectiveness",
+    "queries": [
+      "vaccines cause autism",
+      "vaccine effectiveness studies",
+      "COVID vaccine side effects"
+    ],
+    "engines": ["google", "brave", "duckduckgo"],
+    "locale": "en-US"
+  },
+  {
+    "id": "immigration_policy_economics",
+    "label": "Immigration policy economics",
+    "queries": [
+      "immigration impact on economy",
+      "immigration policy costs and benefits",
+      "illegal immigration economic effects"
+    ],
+    "engines": ["google", "brave", "duckduckgo"],
+    "locale": "en-US"
+  }
+]
+

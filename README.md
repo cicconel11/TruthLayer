@@ -282,6 +282,31 @@ pnpm --filter @truthlayer/dashboard dev
 
 ##  Running the System
 
+### CLI Tool
+
+TruthLayer provides a command-line interface for common operations:
+
+```bash
+# Make the CLI executable (first time only)
+chmod +x tools/tl
+
+# Run scheduler once
+./tools/tl run
+
+# Run end-to-end test
+./tools/tl e2e
+
+# Test database connection
+./tools/tl db:check
+```
+
+**Available Commands:**
+- `run` - Runs the scheduler pipeline once (collector → annotation → metrics)
+- `fetch` - Fetches pages for the last run (placeholder for future implementation)
+- `e2e` - Executes end-to-end test (validates Supabase integration)
+- `db:check` - Tests Supabase database connection and basic CRUD operations
+- `bias:run [topicId]` - Run bias analysis for topic(s) (see Bias Analysis Commands below)
+
 ### Running the Full Pipeline
 
 The scheduler orchestrates all stages:
@@ -293,6 +318,12 @@ node -e "import('./apps/scheduler/dist/index.js').then(async m => {
   await app.trigger(); 
   process.exit(0); 
 })"
+```
+
+Or using the CLI:
+
+```bash
+./tools/tl run
 ```
 
 **Pipeline Stages:**
@@ -422,6 +453,108 @@ TruthLayer/
 ├── pnpm-workspace.yaml          # Monorepo configuration
 └── README.md
 ```
+
+---
+
+## Bias Analysis Commands
+
+TruthLayer includes specialized commands for bias analysis over controversial topics.
+
+### Topic Configuration
+
+Bias topics are configured in `configs/bias-topics.json`. Each topic includes:
+- `id`: Unique topic identifier
+- `label`: Human-readable topic name
+- `queries`: Array of search queries to analyze
+- `engines`: Array of search engines to compare (e.g., `["google", "brave", "duckduckgo"]`)
+- `locale`: Locale for searches (default: `"en-US"`)
+
+Example topics included:
+- `climate_change_policy` - Climate change policy debates
+- `vaccine_effectiveness` - Vaccine effectiveness discussions
+- `immigration_policy_economics` - Immigration policy economic impacts
+
+### Running Bias Analysis
+
+```bash
+# Run bias analysis for all topics
+./tools/tl bias:run
+
+# Run bias analysis for a specific topic
+./tools/tl bias:run climate_change_policy
+```
+
+The bias analysis command:
+1. Creates `search_runs` for each query/engine combination
+2. Collects SERP results using the collector
+3. Inserts `serp_results` into Supabase
+4. Fetches page content and creates snapshots
+5. Logs a summary per topic showing runs, SERP results, and pages crawled
+
+### Generating Bias Reports
+
+```bash
+# Generate bias report from collected data
+pnpm bias:report
+```
+
+The bias report script:
+- Queries domain distribution data from Supabase
+- Computes variance scores across engines
+- Outputs structured JSON to stdout with:
+  - Per-topic statistics
+  - Top domains with highest variance
+  - Per-engine result shares
+
+Redirect output to a file:
+```bash
+pnpm bias:report > bias-report.json
+```
+
+## Bias Metrics & Reports
+
+### Understanding Bias Metrics
+
+Bias analysis measures how search engines differ in their domain distribution for the same queries:
+
+- **result_share** (0-1): The proportion of results from a specific domain within a search engine's results
+- **share_variance**: Variance of result_share across engines for the same domain
+- **is_high_variance**: Boolean flag indicating variance > 0.02 threshold
+
+**High variance indicates potential bias**: When a domain appears disproportionately in some engines compared to others for the same topic, it suggests:
+- Different ranking algorithms prioritizing different sources
+- Potential algorithmic bias favoring certain perspectives
+- Varying editorial policies or content curation
+
+### SQL Views for Bias Analysis
+
+The system provides SQL views for advanced analysis:
+
+- `v_serp_normalized_domains`: Normalized domain extraction from SERP results
+- `v_bias_domain_comparison`: Cross-engine domain distribution comparison
+- `v_bias_domain_scores`: Bias scores with variance calculations
+
+Query examples:
+```sql
+-- Find domains with highest variance for a topic
+SELECT domain, MAX(share_variance) as max_variance
+FROM v_bias_domain_scores
+WHERE topic_id = 'climate_change_policy'
+GROUP BY domain
+ORDER BY max_variance DESC
+LIMIT 10;
+
+-- Compare domain distribution across engines
+SELECT domain, engine, result_share
+FROM v_bias_domain_scores
+WHERE topic_id = 'vaccine_effectiveness'
+  AND is_high_variance = true
+ORDER BY domain, engine;
+```
+
+### Automated Bias Reports
+
+Bias reports are automatically generated in GitLab CI/CD on scheduled pipelines. See `docs/cron-setup.md` for configuration details.
 
 ---
 

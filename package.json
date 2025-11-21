@@ -23,6 +23,8 @@
     "dev": "pnpm run dev:dashboard",
     "dev:collector": "pnpm --filter @truthlayer/collector dev",
     "dev:dashboard": "pnpm --filter @truthlayer/dashboard dev",
+    "dev:e2e": "tsx scripts/run-e2e-test.ts",
+    "bias:report": "tsx scripts/compute-bias-report.ts",
     "start:dev": "concurrently -n COLLECTOR,DASHBOARD \"pnpm run dev:collector\" \"pnpm run dev:dashboard\""
   },
   "engines": {

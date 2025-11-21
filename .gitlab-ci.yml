@@ -1,5 +1,7 @@
 stages:
   - build
+  - scrape
+  - analyze
   - run_pipeline
 
 variables:
@@ -11,6 +13,12 @@ variables:
   SCHEDULER_RUN_ON_START: "false"  # Don't start cron, just run once
   FORCE_REFRESH: "false"           # Use cached results where possible
   NODE_ENV: "production"
+
+  # Database configuration
+  # DATABASE_URL: Supabase Postgres connection string (set in GitLab CI/CD Variables)
+  #   - Required for Supabase integration (search_runs, serp_results, pages, page_snapshots)
+  #   - Falls back to STORAGE_URL if it's a Postgres URL
+  #   - Set as a protected masked variable in GitLab Settings → CI/CD → Variables
 
 # Build stage - cache dependencies and build artifacts
 build_truthlayer:
@@ -133,3 +141,98 @@ run_manual_pipeline:
     - main
   variables:
     FORCE_REFRESH: "true"  # Force fresh data collection for manual runs
+
+# Scheduled run for Supabase integration
+# Requires DATABASE_URL to be set as a protected, masked CI/CD variable.
+truthlayer_scheduled_run:
+  stage: scrape
+  image: node:${NODE_VERSION}-bookworm-slim
+  dependencies:
+    - build_truthlayer
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq git ca-certificates curl wget gnupg
+    - |
+      # Install Google Chrome for Puppeteer (needed for some scrapers)
+      wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add -
+      echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list
+      apt-get update -qq && apt-get install -y -qq google-chrome-stable fonts-liberation libasound2 libatk-bridge2.0-0 libatk1.0-0 libatspi2.0-0 libcups2 libdbus-1-3 libdrm2 libgtk-3-0 libnspr4 libnss3 libx11-xcb1 libxcomposite1 libxdamage1 libxrandr2 libxss1 libxtst6 xdg-utils
+    - corepack enable && corepack prepare pnpm@${PNPM_VERSION} --activate
+    - pnpm config set store-dir /tmp/.pnpm-store
+  script:
+    - echo "Starting scheduled TruthLayer scrape run..."
+    - |
+      # Set up data directories
+      mkdir -p data/serp data/cache/annotation data/metrics data/parquet reports
+      # Copy built artifacts from build stage
+      cp -r apps/*/dist/ apps/ 2>/dev/null || true
+      cp -r packages/*/dist/ packages/ 2>/dev/null || true
+      # Run the scheduler pipeline once
+      timeout 1800 node -e "
+      import('./apps/scheduler/dist/index.js').then(async (m) => {
+        console.log('Running TruthLayer scheduled scrape...');
+        try {
+          const app = await m.createSchedulerApp();
+          await app.trigger();
+          console.log('Scheduled scrape completed successfully!');
+        } catch (error) {
+          console.error('Scheduled scrape failed:', error.message);
+          process.exit(1);
+        }
+      }).catch(err => {
+        console.error('Scheduler import error:', err.message);
+        process.exit(1);
+      });
+      "
+  variables:
+    NODE_ENV: production
+  allow_failure: false
+  cache:
+    key:
+      files:
+        - pnpm-lock.yaml
+    paths:
+      - /tmp/.pnpm-store
+      - node_modules/
+      - apps/*/node_modules/
+      - packages/*/node_modules/
+
+# Bias report generation
+# Requires DATABASE_URL to be set as a protected, masked CI/CD variable (same as other jobs).
+truthlayer_bias_report:
+  stage: analyze
+  image: node:${NODE_VERSION}-bookworm-slim
+  dependencies:
+    - build_truthlayer
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq git ca-certificates curl
+    - corepack enable && corepack prepare pnpm@${PNPM_VERSION} --activate
+    - pnpm config set store-dir /tmp/.pnpm-store
+  script:
+    - echo "Generating bias report..."
+    - pnpm install --frozen-lockfile
+    - pnpm run build
+    - |
+      # Copy built artifacts from build stage
+      cp -r apps/*/dist/ apps/ 2>/dev/null || true
+      cp -r packages/*/dist/ packages/ 2>/dev/null || true
+      # Generate bias report
+      pnpm bias:report > bias-report.json
+  artifacts:
+    paths:
+      - bias-report.json
+    expire_in: 7 days
+  variables:
+    NODE_ENV: production
+  cache:
+    key:
+      files:
+        - pnpm-lock.yaml
+    paths:
+      - /tmp/.pnpm-store
+      - node_modules/
+      - apps/*/node_modules/
+      - packages/*/node_modules/
